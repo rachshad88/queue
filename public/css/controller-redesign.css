@@ -1,0 +1,210 @@
+/* RHU Queue Controller redesign — standalone override (no Vite build needed).
+   Palette: navy / royal / cobalt / cyan-blue / white / cool gray only. */
+
+/* Later cascade layer: beats the stale bundle even where it uses layered !important. */
+@layer rhu-overrides {
+
+/* ---------- page backdrop: #0b1120 ---------- */
+body.page-controller {
+  min-height: 100vh;
+  color: #e4edfb;
+  background:
+    radial-gradient(900px 420px at 85% -5%, rgba(30,136,229,.10), transparent 62%),
+    radial-gradient(760px 420px at 8% 108%, rgba(18,48,85,.35), transparent 60%),
+    #0b1120;
+}
+.ctrl-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.ctrl-bg::before {
+  content: ""; position: absolute; inset: 0;
+  background-image: radial-gradient(rgba(148,197,255,.13) 1px, transparent 1px);
+  background-size: 28px 28px;
+  -webkit-mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, #000 0%, transparent 75%);
+  mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, #000 0%, transparent 75%);
+}
+.ctrl-bg .ctrl-ring { position: absolute; border: 1px solid rgba(127,180,238,.14); border-radius: 50%; }
+.ctrl-bg .ctrl-ring.ring-a { width: 560px; height: 560px; top: -280px; right: -160px; }
+.ctrl-bg .ctrl-ring.ring-b { width: 380px; height: 380px; top: -190px; right: -40px; border-color: rgba(127,180,238,.09); }
+.ctrl-bg .ctrl-line { position: absolute; top: 0; bottom: 0; width: 1px; background: linear-gradient(180deg, rgba(127,180,238,.12), transparent 70%); }
+.ctrl-bg .ctrl-line.line-a { left: 305px; }
+
+/* ---------- layout ---------- */
+.ctrl-main { position: relative; z-index: 1; margin-left: 280px; padding: 28px 32px 48px; }
+@media (max-width: 1023px) { .ctrl-main { margin-left: 0; padding: 72px 16px 40px; } .ctrl-bg .ctrl-line.line-a { display: none; } }
+.ctrl-wrap { max-width: 1020px; margin: 0 auto; }
+.ctrl-topbar {
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 16px;
+  padding: 6px 2px 16px; margin-bottom: 16px;
+  border-bottom: 0.5px solid #2e3b5c;
+}
+.ctrl-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: #7c8aad; margin: 0 0 6px; }
+.ctrl-title { font-size: 22px; font-weight: 800; letter-spacing: .04em; color: #f1f4fb; margin: 0; }
+.ctrl-livepill {
+  display: inline-flex; align-items: center; gap: 8px; flex: none;
+  font-size: 12px; font-weight: 600; color: #bfe0ff;
+  border: 1px solid rgba(56,189,248,.30); background: rgba(27,99,200,.16);
+  padding: 7px 14px; border-radius: 999px;
+}
+.ctrl-dot { width: 7px; height: 7px; border-radius: 50%; background: #38bdf8; box-shadow: 0 0 8px rgba(56,189,248,.8); }
+
+/* ---------- panel + meta: #111A30 card on #0b1120 page ---------- */
+.ctrl-panel {
+  background: #111a30;
+  border: 1px solid #24304d;
+  border-radius: 12px;
+  box-shadow: 0 18px 44px rgba(2,8,25,.45);
+  padding: 22px 22px 18px;
+}
+.ctrl-meta {
+  display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px;
+  padding-bottom: 16px; border-bottom: 0.5px solid #2e3b5c;
+}
+@media (max-width: 720px) { .ctrl-meta { grid-template-columns: 1fr; } }
+.ctrl-label { display: block; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #7c8aad; margin-bottom: 6px; }
+.ctrl-deptname { font-size: 16px; font-weight: 500; letter-spacing: -.01em; color: #f1f4fb; }
+.ctrl-server { margin-top: 6px; font-size: 13px; color: #7c8aad; }
+.ctrl-server strong { color: #f1f4fb; font-weight: 500; }
+.ctrl-hint { font-size: 12px; color: #7c8aad; margin: 6px 0 0; }
+.ctrl-takeover { margin-top: 16px; padding: 14px; border: 0.5px solid #2e3b5c; border-radius: 8px; background: rgba(11,17,32,.5); }
+.ctrl-row { display: flex; gap: 8px; align-items: center; }
+@media (max-width: 640px) { .ctrl-row { flex-direction: column; align-items: stretch; } }
+.ctrl-select {
+  flex: 1; height: 40px; padding: 0 12px; font-size: 13.5px; color: #eaf3ff;
+  background: rgba(10,13,18,.7); border: 1px solid rgba(148,163,184,.3); border-radius: 6px; outline: none;
+}
+.ctrl-select:focus { border-color: #38bdf8; box-shadow: 0 0 0 2px rgba(56,189,248,.18); }
+.ctrl-subpanel { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(127,180,238,.12); }
+
+/* ---------- buttons ---------- */
+.ctrl-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0 6px; }
+.ctrl-actions .ctrl-btn {
+  flex: 1 1 0; padding: 0 28px;
+}
+.ctrl-actions #prioritize-btn-wrap {
+  flex: 1 1 0; display: inline-flex;
+}
+.ctrl-actions #prioritize-btn-wrap .ctrl-btn { width: 100%; }
+.ctrl-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 40px; padding: 0 18px; font-size: 13.5px; font-weight: 700; letter-spacing: .01em;
+  border-radius: 6px; border: 1px solid transparent; cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, transform .1s ease;
+  white-space: nowrap; text-decoration: none;
+}
+.ctrl-btn svg { width: 15px; height: 15px; }
+.ctrl-btn:active { transform: translateY(1px); }
+.ctrl-btn:disabled { opacity: .55; cursor: not-allowed; }
+.ctrl-btn:disabled:hover { background: transparent; border-color: transparent; }
+.ctrl-btn-primary { background: #1e88e5; color: #fff; border-color: #1e88e5; box-shadow: none; }
+.ctrl-btn-primary:hover { background: #1976c9; border-color: #1976c9; }
+.ctrl-btn-secondary { background: transparent; color: #c6cee0; border: 0.5px solid #2e3b5c; }
+.ctrl-btn-secondary:hover { background: rgba(198,206,224,.08); }
+.ctrl-btn-ghost { background: transparent; color: #c6cee0; border: 0.5px solid #2e3b5c; }
+.ctrl-btn-ghost:hover { background: rgba(198,206,224,.08); }
+.ctrl-btn-outline { background: transparent; color: #c6cee0; border: 0.5px solid #2e3b5c; }
+.ctrl-btn-outline:hover { background: rgba(198,206,224,.08); }
+
+/* ---------- badges ---------- */
+.window-badge { margin-top: 6px; display: inline-block; padding: 4px 14px; border-radius: 999px; font-weight: 700; font-size: 0.85rem; letter-spacing: .01em; }
+.window-badge.is-assigned { background: #123055; color: #7ec1ff; border: 0; }
+.window-badge.is-empty { background: rgba(148,163,184,.12); color: #9db3d5; border: 1px solid rgba(148,163,184,.25); }
+
+/* ---------- queue table: soft powder-blue surface reads cleanly on the charcoal card ---------- */
+/* ---------- queue table: light rows on the dark card ---------- */
+body.page-controller .ctrl-tablewrap { margin-top: 14px; overflow-x: auto; border: 0.5px solid #24304d; border-radius: 12px; background: #f4f6fb; }
+body.page-controller .controller-table { width: 100%; border-collapse: separate; border-spacing: 0; background: #f4f6fb; border-radius: 0; overflow: visible; }
+body.page-controller .controller-table th,
+body.page-controller .controller-table td { border: 0; padding: 11px 14px; text-align: left; font-size: 13.5px; }
+body.page-controller .controller-table thead th {
+  font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+  color: #7c8aad; background: #0e1830;
+  border-top: 0; border-bottom: 0;
+}
+body.page-controller .controller-table thead th:first-child { border-radius: 12px 0 0 0; }
+body.page-controller .controller-table thead th:last-child { border-radius: 0 12px 0 0; text-align: right; }
+body.page-controller .controller-table tbody td { border-bottom: 0.5px solid #e1e6f0; color: #1a2233; font-weight: 500; background: #f4f6fb; }
+body.page-controller .controller-table tbody tr:last-child td { border-bottom: 0; }
+body.page-controller .controller-table tbody tr:last-child td:first-child { border-radius: 0 0 0 12px; }
+body.page-controller .controller-table tbody tr:last-child td:last-child { border-radius: 0 0 12px 0; }
+body.page-controller .controller-table tbody tr:nth-child(even) { background: none; }
+body.page-controller .controller-table tbody tr:nth-child(even) td { background-color: #f4f6fb; }
+body.page-controller .controller-table tbody tr:hover td { background-color: #e9edf5; }
+body.page-controller .controller-table tbody td:last-child { text-align: right; }
+body.page-controller .controller-table tbody td:first-child { font-family: Consolas, "SF Mono", monospace; font-weight: 700; letter-spacing: .08em; color: #1a2233; }
+/* Status (col 2) + Type (col 3): secondary text */
+body.page-controller .controller-table tbody td:nth-child(2),
+body.page-controller .controller-table tbody td:nth-child(3) { color: #7a8399; font-weight: 600; }
+body.page-controller .ctrl-empty { text-align: center !important; color: #7a8399 !important; font-family: inherit !important; font-weight: 500 !important; background: #f4f6fb !important; }
+/* Serving row: solid green fill is the status indicator — bold dark-green text, no badge */
+body.page-controller .highlight-row { background: none !important; animation: none !important; }
+body.page-controller .highlight-row td { background-color: #639922 !important; color: #173404 !important; font-weight: 700 !important; border-bottom-color: #639922; }
+body.page-controller .highlight-row td:first-child { box-shadow: none; }
+body.page-controller .highlight-row td:nth-child(2),
+body.page-controller .highlight-row td:nth-child(3) { color: #173404; }
+body.page-controller .highlight-row .priority-badge {
+  background: none !important; border: 0 !important; padding: 0 !important;
+  color: #173404 !important; font-size: 13.5px; letter-spacing: 0;
+}
+body.page-controller .highlight-row .row-actions-toggle { background: #f4f6fb; border: 0.5px solid #173404; color: #173404; }
+body.page-controller .highlight-row .row-actions-toggle:hover { background: #fff; border-color: #173404; color: #173404; }
+body.page-controller .priority-badge {
+  display: inline-block; background: #12336e; color: #bfe0ff;
+  border: 1px solid rgba(56,189,248,.45); padding: 1px 8px; border-radius: 6px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.5px; vertical-align: middle;
+}
+body.page-controller .emergency-badge {
+  display: inline-block; background: #6e1c12; color: #ffd9d1;
+  border: 1px solid rgba(239,68,68,.55); padding: 1px 8px; border-radius: 6px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.5px; vertical-align: middle;
+}
+
+/* ---------- row actions dropdown on dark ---------- */
+body.page-controller .row-actions { position: relative; display: inline-block; }
+body.page-controller .row-actions-toggle { background: #f4f6fb; border: 0.5px solid #c9d3e3; color: #1a2233; border-radius: 6px; padding: 2px 9px; font-weight: 700; }
+body.page-controller .row-actions-toggle:hover { border-color: #7c8aad; color: #1a2233; background: #e9edf5; }
+body.page-controller .row-actions-menu { background: #fff; border: 1px solid #b9d2ef; box-shadow: 0 12px 28px rgba(10,31,77,.18); border-radius: 8px; z-index: 200; width: max-content; min-width: 0; }
+body.page-controller .row-action-item { color: #16479b; border-radius: 6px; }
+body.page-controller .row-action-item:hover { background: #e8f1fc; }
+body.page-controller .row-action-item-danger { color: #c62828; }
+body.page-controller .row-action-item-danger:hover { background: #fdecea; }
+
+/* ---------- modals ---------- */
+.ctrl-modal {
+  width: 100%; max-width: 420px; text-align: center;
+  background: #111a30;
+  border: 1px solid #24304d; border-radius: 10px;
+  box-shadow: 0 24px 60px rgba(2,8,25,.6);
+  padding: 26px 24px;
+}
+.ctrl-modal-wide { max-height: 85vh; overflow-y: auto; }
+.ctrl-modal-title { font-size: 17px; font-weight: 800; color: #fff; margin: 0; letter-spacing: .01em; }
+.ctrl-modal-sub { font-size: 13px; line-height: 1.55; color: #9db3d5; margin: 10px 0 0; }
+.ctrl-modal-input {
+  width: 85%; margin: 16px auto 0; display: block; height: 44px; text-align: center;
+  font-size: 16px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase;
+  color: #fff; background: rgba(10,13,18,.7); border: 1px solid rgba(148,163,184,.3); border-radius: 6px; outline: none;
+}
+.ctrl-modal-input:focus { border-color: #38bdf8; box-shadow: 0 0 0 2px rgba(56,189,248,.18); }
+.ctrl-transferbtn {
+  width: 100%; text-align: left; padding: 11px 14px; font-size: 13.5px; font-weight: 600; color: #e4edfb;
+  background: rgba(56,150,248,.06); border: 1px solid rgba(127,180,238,.20); border-radius: 6px; cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
+}
+.ctrl-transferbtn:hover { background: rgba(56,150,248,.13); border-color: rgba(56,189,248,.45); }
+.ctrl-transfer-sub { display: block; font-size: 11.5px; font-weight: 400; color: #8ba3c7; margin-top: 2px; }
+
+/* NOTE: sidebar theme lives inline in app/sidebar.php (#rhu-sidebar-theme)
+   so all pages share one design without per-page edits. */
+
+/* ---------- cross-clinic mutual help panel (Clinic 1/2/3 pool) ---------- */
+.ctrl-pool { margin-top: 16px; }
+.ctrl-pool-head { margin-bottom: 6px; }
+.ctrl-pool-title { font-size: 14px; font-weight: 800; color: #fff; margin: 0; letter-spacing: .02em; }
+.ctrl-pool-wrap { border: 0.5px solid #24304d; border-radius: 12px; background: #f4f6fb; overflow-x: auto; }
+body.page-controller .ctrl-pool .controller-table { background: #f4f6fb; }
+body.page-controller .ctrl-pool td:first-child { font-family: inherit; letter-spacing: normal; color: #1a2233; }
+body.page-controller .ctrl-pool td:nth-child(2) { font-family: Consolas, "SF Mono", monospace; font-weight: 700; letter-spacing: .08em; color: #1a2233; }
+body.page-controller .ctrl-pool .ctrl-hint { padding: 0 14px 10px; }
+.ctrl-btn-mini { padding: 5px 12px; font-size: 12px; border-radius: 7px; min-height: 28px; }
+.ctrl-btn-mini:disabled { background: #8ab0d8; border-color: #8ab0d8; opacity: .55; cursor: not-allowed; }
+
+} /* end @layer rhu-overrides */

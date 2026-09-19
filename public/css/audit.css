@@ -1,0 +1,158 @@
+/* ========== existing page styles (kept & slightly cleaned) ========== */
+body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    margin: 40px;
+    background: #eaf6fb;
+}
+#header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 10px;
+}
+.med-icon {
+    width: 48px;
+    height: 48px;
+    background: #b3e5fc;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+}
+.med-icon svg {
+    width: 32px;
+    height: 32px;
+    fill: #1976d2;
+}
+h2 {
+    color: #1976d2;
+    font-weight: 600;
+    margin: 0;
+}
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 20px;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    border-radius: 8px;
+    overflow: hidden;
+}
+th, td {
+    border: 1px solid #b3e5fc;
+    padding: 10px;
+    text-align: center;
+}
+th {
+    background: #b3e5fc;
+    color: #1976d2;
+    font-size: 1.05em;
+}
+select {
+    padding: 7px;
+    border-radius: 5px;
+    border: 1px solid #b3e5fc;
+    background: #e3f2fd;
+    color: #1976d2;
+    font-weight: 500;
+}
+label {
+    color: #1976d2;
+    font-weight: 500;
+}
+tr:nth-child(even) {
+    background: #e3f2fd;
+}
+tr:hover {
+    background: #b3e5fc55;
+}
+
+/* ========== controls + buttons ========== */
+.controls {
+  margin: 12px 0;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* search input */
+.controls input[type="text"] {
+  padding: 8px 10px;
+  min-width: 240px;
+  border-radius: 8px;
+  border: 1px solid #e5f1fb;
+  background: #fff;
+  color: #0f172a;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+  font-size: 14px;
+}
+
+/* Base button */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  line-height: 1;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform .06s ease, box-shadow .12s ease, background-color .12s ease, border-color .12s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Primary (Search) */
+.btn-primary {
+  background: #1976d2;
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(25,118,210,0.12), inset 0 -1px 0 rgba(255,255,255,0.03);
+  border-color: rgba(0,0,0,0.05);
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(25,118,210,0.14); }
+.btn-primary:active { transform: translateY(0); box-shadow: 0 6px 14px rgba(25,118,210,0.10); }
+.btn-primary:focus { outline: 3px solid rgba(25,118,210,0.18); outline-offset: 2px; }
+
+/* Secondary / Outline (Reset) */
+.btn-outline {
+  background: transparent;
+  color: #374151;
+  border: 1px solid #d1eaf9;
+  box-shadow: none;
+}
+.btn-outline:hover { background: rgba(0,0,0,0.03); transform: translateY(-1px); }
+.btn-outline:focus { outline: 3px solid rgba(55,65,81,0.10); outline-offset: 2px; }
+
+/* Ghost (Show All) — subtle */
+.btn-ghost {
+  background: transparent;
+  color: #1976d2;
+  border: none;
+  padding-left: 8px;
+  padding-right: 8px;
+  font-weight: 600;
+}
+.btn-ghost:hover { background: rgba(25,118,210,0.05); transform: translateY(-1px); }
+.btn-ghost:focus { outline: 3px solid rgba(25,118,210,0.10); outline-offset: 2px; }
+
+/* Small utility for disabled state */
+.btn[disabled], .btn.disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Icon style inside button (if you use SVG icons) */
+.btn svg { width: 16px; height: 16px; display: inline-block; vertical-align: middle; }
+
+/* Responsive: stack controls on narrow screens */
+@media (max-width: 560px) {
+  .controls { flex-direction: column; align-items: stretch; }
+  .controls label { display:block; margin-bottom:6px; color:#6b7280; }
+  .btn { width: 100%; justify-content: center; }
+  .controls input[type="text"] { width: 100%; box-sizing: border-box; }
+}

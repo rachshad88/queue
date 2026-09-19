@@ -1,0 +1,221 @@
+/* RHU uniform theme — one design language for every page.
+   Mirrors the Queue Controller (navy / royal / cobalt / cyan-blue / white / cool gray).
+   Plain unlayered CSS, so it wins over the stale layered Tailwind bundle without a rebuild.
+   Excludes: login (own navy theme), live + display (TV walls, patched below), print. */
+
+/* Later cascade layer: beats the stale bundle even where it uses layered !important. */
+@layer rhu-overrides {
+
+@media screen {
+
+  /* ---------- base ---------- */
+  body:not(.login-page):not(.page-live):not(.page-display) {
+    color: #e4edfb;
+    background:
+      radial-gradient(900px 420px at 85% -5%, rgba(37,111,214,.14), transparent 62%),
+      radial-gradient(760px 420px at 8% 108%, rgba(22,71,155,.20), transparent 60%),
+      linear-gradient(180deg, #061633 0%, #071c40 55%, #081f49 100%);
+    background-attachment: fixed;
+  }
+
+  /* ---------- headings ---------- */
+  body:not(.login-page):not(.page-live):not(.page-display) h1,
+  body:not(.login-page):not(.page-live):not(.page-display) h2 { color: #f4f8ff; }
+  body:not(.login-page):not(.page-live):not(.page-display) .text-slate-900,
+  body:not(.login-page):not(.page-live):not(.page-display) .text-gray-800 { color: #f4f8ff; }
+  body:not(.login-page):not(.page-live):not(.page-display) .text-gray-700 { color: #c6d6ef; }
+  body:not(.login-page):not(.page-live):not(.page-display) .text-gray-600,
+  body:not(.login-page):not(.page-live):not(.page-display) .text-slate-500,
+  body:not(.login-page):not(.page-live):not(.page-display) .text-gray-500 { color: #9db3d5; }
+  body:not(.login-page):not(.page-live):not(.page-display) .text-gray-400 { color: #7fa8d8; }
+  body:not(.login-page):not(.page-live):not(.page-display) .text-primary-500 { color: #5f9fe8; }
+  body:not(.login-page):not(.page-live):not(.page-display) .text-primary-600,
+  body:not(.login-page):not(.page-live):not(.page-display) .text-sky-600 { color: #7fb4ee; }
+
+  /* ---------- cards / panels ---------- */
+  body:not(.login-page):not(.page-live):not(.page-display) div.bg-white {
+    background: linear-gradient(180deg, rgba(16,44,96,.72), rgba(10,31,77,.78));
+    border-color: rgba(127,180,238,.18);
+  }
+  body:not(.login-page):not(.page-live):not(.page-display) .border-gray-200,
+  body:not(.login-page):not(.page-live):not(.page-display) .border-slate-200 { border-color: rgba(127,180,238,.18); }
+  body:not(.login-page):not(.page-live):not(.page-display) .divide-gray-100 > * + * { border-color: rgba(127,180,238,.10); }
+
+  /* ---------- tables ---------- */
+  body:not(.login-page):not(.page-live):not(.page-display) table { background: transparent; }
+  body:not(.login-page):not(.page-live):not(.page-display) thead tr { background: rgba(10,31,77,.55); }
+  body:not(.login-page):not(.page-live):not(.page-display) thead tr.bg-primary-500 { background: rgba(10,31,77,.55); }
+  body:not(.login-page):not(.page-live):not(.page-display) thead th { color: #9db3d5; }
+  body:not(.login-page):not(.page-live):not(.page-display) thead th.text-white,
+  body:not(.login-page):not(.page-live):not(.page-display) thead tr.text-white { color: #9db3d5; }
+  body:not(.login-page):not(.page-live):not(.page-display) tbody td { color: #e4edfb; border-color: rgba(127,180,238,.10); }
+  body:not(.login-page):not(.page-live):not(.page-display) tbody tr.bg-white,
+  body:not(.login-page):not(.page-live):not(.page-display) tbody tr.bg-gray-50 { background: transparent; }
+  body:not(.login-page):not(.page-live):not(.page-display) tbody tr:nth-child(even) { background: rgba(255,255,255,.018); }
+  body:not(.login-page):not(.page-live):not(.page-display) tbody tr:hover { background: rgba(56,150,248,.07); }
+  body:not(.login-page):not(.page-live):not(.page-display) tbody td.font-medium,
+  body:not(.login-page):not(.page-live):not(.page-display) tbody td.font-semibold { color: #fff; }
+  body:not(.login-page):not(.page-live):not(.page-display) .bg-gray-50 { background-color: rgba(255,255,255,.03); }
+
+  /* ---------- primary buttons (stale dist renders these indigo; force cobalt) ---------- */
+  body:not(.login-page):not(.page-live):not(.page-display) .bg-primary-600 {
+    background: linear-gradient(180deg, #256fd6, #1b63c8);
+    border: 1px solid rgba(127,180,238,.35);
+  }
+  body:not(.login-page):not(.page-live):not(.page-display) .bg-primary-600:hover { background: linear-gradient(180deg, #2f7ce4, #1f6cd2); }
+  body:not(.login-page):not(.page-live):not(.page-display) .hover\:bg-primary-700:hover { background-color: #1f6cd2; }
+  body:not(.login-page):not(.page-live):not(.page-display) .bg-primary-50 {
+    background: rgba(6,22,51,.45); border-color: rgba(127,180,238,.16);
+  }
+  body:not(.login-page):not(.page-live):not(.page-display) .text-primary-800 { color: #bfe0ff; }
+  body:not(.login-page):not(.page-live):not(.page-display) .border-primary-200 { border-color: rgba(127,180,238,.25); }
+
+  /* ---------- amber Edit buttons -> cobalt outline (no yellow) ---------- */
+  body:not(.login-page):not(.page-live):not(.page-display) .bg-amber-50 {
+    background: transparent; border-color: rgba(56,150,248,.5);
+  }
+  body:not(.login-page):not(.page-live):not(.page-display) .border-amber-300 { border-color: rgba(56,150,248,.5); }
+  body:not(.login-page):not(.page-live):not(.page-display) .text-amber-700 { color: #bfe0ff; }
+  body:not(.login-page):not(.page-live):not(.page-display) .hover\:bg-amber-100:hover { background: rgba(56,150,248,.12); }
+
+  /* ---------- orange priority ticket button -> bright sky solid (no orange) ---------- */
+  body:not(.login-page):not(.page-live):not(.page-display) .bg-orange-600 { background: #0e7cc4; }
+  body:not(.login-page):not(.page-live):not(.page-display) .bg-orange-600:hover,
+  body:not(.login-page):not(.page-live):not(.page-display) .hover\:bg-orange-700:hover { background: #1290dd; }
+
+  /* ---------- forms ---------- */
+  body:not(.login-page):not(.page-live):not(.page-display) input[type="text"],
+  body:not(.login-page):not(.page-live):not(.page-display) input[type="password"],
+  body:not(.login-page):not(.page-live):not(.page-display) input[type="date"],
+  body:not(.login-page):not(.page-live):not(.page-display) select,
+  body:not(.login-page):not(.page-live):not(.page-display) textarea {
+    background: rgba(6,22,51,.7); border-color: rgba(127,180,238,.25); color: #eaf3ff;
+  }
+  body:not(.login-page):not(.page-live):not(.page-display) input::placeholder { color: #5d77a1; }
+  body:not(.login-page):not(.page-live):not(.page-display) input:focus,
+  body:not(.login-page):not(.page-live):not(.page-display) select:focus,
+  body:not(.login-page):not(.page-live):not(.page-display) textarea:focus {
+    border-color: #38bdf8; box-shadow: 0 0 0 2px rgba(56,189,248,.18); outline: none;
+  }
+  body:not(.login-page):not(.page-live):not(.page-display) select option { background: #0a1f4d; color: #eaf3ff; }
+  body:not(.login-page):not(.page-live):not(.page-display) label { color: #c6d6ef; }
+  body:not(.login-page):not(.page-live):not(.page-display) .filters label { color: #7fa8d8; }
+  body:not(.login-page):not(.page-live):not(.page-display) .text-red-500 { color: #f0a8a8; }
+
+  /* ---------- status pills: keep green/red/blue semantics, drop gray-on-navy wash ---------- */
+  body:not(.login-page):not(.page-live):not(.page-display) .bg-gray-100 { background-color: rgba(148,163,184,.14); }
+  body:not(.login-page):not(.page-live):not(.page-display) span.text-gray-500 { color: #9db3d5; }
+
+  /* ---------- modal backdrops ---------- */
+  body:not(.login-page):not(.page-live):not(.page-display) .fixed.inset-0 { background: rgba(4,18,43,.66); }
+
+  /* ---------- SERVER HISTORY: filters + serve log fused into one steel-blue card ----------
+     (scoped by #sid, unique to server_history.php; no markup change needed) */
+  body:has(#sid) form.mb-6 {
+    margin-bottom: 0; padding: 16px;
+    border: 1px solid rgba(127,180,238,.3); border-bottom: 0;
+    border-radius: 12px 12px 0 0;
+    background: linear-gradient(180deg, #1a3a6b, #143063);
+    box-shadow: 0 18px 44px rgba(2,8,25,.45);
+  }
+  body:has(#sid) .filters input,
+  body:has(#sid) .filters select {
+    background: rgba(6,22,51,.7); border-color: rgba(127,180,238,.25); color: #eaf3ff;
+  }
+  body:has(#sid) main h2 {
+    margin: 0; padding: 12px 16px 10px;
+    background: #143063;
+    border-left: 1px solid rgba(127,180,238,.3);
+    border-right: 1px solid rgba(127,180,238,.3);
+    border-top: 1px solid rgba(127,180,238,.18);
+    color: #bfe0ff;
+  }
+  body:has(#sid) div.overflow-hidden {
+    border-radius: 0 0 12px 12px; border-top: 0;
+    background: linear-gradient(180deg, #143063, #10294f);
+    box-shadow: 0 18px 44px rgba(2,8,25,.45);
+  }
+
+  /* ---------- tables everywhere: single hairline separators, no stray white lines ----------
+     (controller table has its own more-specific rules and is unaffected) */
+  table thead tr { border-bottom: 0.5px solid rgba(127,180,238,.3) !important; }
+  table tbody td { border-top: 0 !important; border-bottom: 0.5px solid rgba(127,180,238,.14) !important; }
+  table tbody tr:first-child td { border-top: 0 !important; }
+  table tbody tr:last-child td { border-bottom: 0 !important; }
+  .divide-gray-100 > * + *,
+  .divide-gray-100 > :not(:last-child) { border-color: rgba(127,180,238,.14) !important; }
+
+  /* ---------- SERVER HISTORY filter controls: always legible ----------
+     Native date-picker icon, select arrow, and option popups follow
+     color-scheme; force dark so they render on the navy fields. */
+  body:has(#sid) .filters input,
+  body:has(#sid) .filters select {
+    background: rgba(6,22,51,.85) !important;
+    border-color: rgba(127,180,238,.35) !important;
+    color: #eaf3ff !important;
+    color-scheme: dark;
+  }
+  body:has(#sid) .filters select option { background: #0a1f4d !important; color: #eaf3ff !important; }
+  body:has(#sid) .filters label { color: #bfe0ff !important; }
+
+  /* ---------- SERVER HISTORY table: single hairline separators, no stray white lines ---------- */
+  body:has(#sid) table thead tr { border-bottom: 0.5px solid rgba(127,180,238,.3) !important; }
+  body:has(#sid) table tbody td { border-top: 0 !important; border-bottom: 0.5px solid rgba(127,180,238,.14) !important; }
+  body:has(#sid) table tbody tr:first-child td { border-top: 0 !important; }
+  body:has(#sid) table tbody tr:last-child td { border-bottom: 0 !important; }
+  body:has(#sid) .divide-gray-100 > * + *,
+  body:has(#sid) .divide-gray-100 > :not(:last-child) { border-color: rgba(127,180,238,.14) !important; }
+
+  /* ---------- priority badge (ticket + controller) : navy/cyan, never orange ---------- */
+  .priority-badge {
+    display: inline-block; background: #12336e !important; color: #bfe0ff !important;
+    border: 1px solid rgba(56,189,248,.45); padding: 1px 8px; border-radius: 6px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.5px; vertical-align: middle;
+  }
+
+  /* ---------- LIVE wall display: priority amber -> cyan-blue (structure untouched) ---------- */
+  body.page-live .wait-cat.cat-priority { color: #7fd4ff; background: rgba(14,124,196,.18); border-color: rgba(56,189,248,.5); }
+  body.page-live .cat-priority, body.page-live .cat-senior { color: #7fd4ff; background: rgba(14,124,196,.18); border-color: rgba(56,189,248,.55); }
+  body.page-live #wait-rail { border-top-color: #1b63c8; }
+  body.page-live .wait-rail-head h4 { color: #7fd4ff; }
+  body.page-live .wait-rail-count, body.page-live #wait-rail-count {
+    border-color: rgba(56,189,248,.5); background: rgba(14,124,196,.20); color: #bfe0ff;
+  }
+  body.page-live .wait-row.is-priority { border-color: rgba(56,189,248,.4); background: rgba(14,124,196,.12); }
+  body.page-live .wait-row.is-priority .wait-num { color: #7fd4ff; }
+
+  /* ---------- DISPLAY wall: waiting list orange -> cobalt (structure untouched) ---------- */
+  body.page-display #waiting-list-container p {
+    background: linear-gradient(135deg, #12336e 0%, #0a1f4d 100%);
+    border-color: #1b63c8; color: #bfe0ff; box-shadow: 0 4px 15px rgba(27,99,200,.25);
+  }
+  body.page-display #waiting-list-container p:hover {
+    border-color: #38bdf8; background: linear-gradient(135deg, #16479b 0%, #12336e 100%);
+    box-shadow: 0 8px 25px rgba(27,99,200,.35);
+  }
+
+  /* ---------- LOGIN: timeout notice amber -> cyan-blue info (structure untouched) ---------- */
+  body.login-page .alert-timeout { background: rgba(56,189,248,.12); border-color: rgba(56,189,248,.40); color: #bfe0ff; }
+}
+
+/* ---------- print: ticket stays clean ---------- */
+@media print {
+  body { background: #fff !important; color: #000 !important; }
+}
+
+/* ---------- SIDEBAR: single shared theme, delivered via head <link> ----------
+   Clean blue #1E88E5 on navy #071633. Lives here (not in fetched HTML) so it
+   participates in layer ordering exactly like the other proven overrides. */
+#app-sidebar { background: #071633 !important; border-right: 1px solid rgba(127,180,238,.14) !important; }
+#app-sidebar .sidebar-link { color: #8ba3c7; }
+#app-sidebar .sidebar-link:hover { color: #fff; background: rgba(255,255,255,.05); }
+#app-sidebar .sidebar-link-active,
+#app-sidebar a[aria-current="page"] { color: #fff !important; background-color: rgba(30,136,229,.16) !important; }
+#app-sidebar .sidebar-link-active::before,
+#app-sidebar a[aria-current="page"]::before { background-color: #1e88e5 !important; }
+#app-sidebar .sidebar-link-active .nav-tile,
+#app-sidebar a[aria-current="page"] .nav-tile { background-color: #1e88e5 !important; color: #fff !important; box-shadow: 0 6px 14px -3px rgba(30,136,229,.55) !important; }
+#app-sidebar a:focus, #app-sidebar a:focus-visible,
+#app-sidebar button:focus, #app-sidebar button:focus-visible { outline: 2px solid #1e88e5 !important; outline-offset: 2px; }
+
+} /* end @layer rhu-overrides */
