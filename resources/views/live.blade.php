@@ -4,10 +4,10 @@
   <script>try{if(localStorage.getItem('live_sidebar_collapsed')==='1')document.documentElement.className+=' sidebar-prehidden';}catch(e){}</script>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Live Queue Monitor</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <link rel="stylesheet" href="/dist/assets/module-CdqakSoB.css">
+  @inlineCss('dist/assets/module-CdqakSoB.css')
+  @inlineCss('css/fontawesome/css/all.min.css')
+  @inlineCss('css/rhu-uniform.css')
   <script type="module" src="/dist/assets/live-D1tVJTnW.js"></script>
-  <link rel="stylesheet" href="/css/rhu-uniform.css?v=20260918e">
   <style>
     #audio-hint{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);z-index:999;background:rgba(0,0,0,.78);color:#fff;padding:8px 18px;border-radius:999px;font-size:14px;letter-spacing:.02em;box-shadow:0 2px 10px rgba(0,0,0,.4);cursor:pointer;pointer-events:none}
     #audio-hint.audio-hint-hidden{display:none}
@@ -26,7 +26,7 @@
           $isAdmission = stripos((string) $dept->name, 'admission') !== false;
           $isWaiting = stripos((string) $dept->name, 'waiting') !== false;
         @endphp
-        <label class="dept-option" data-dept-id="{{ (int) $dept->id }}"><input class="dept-checkbox" type="checkbox" value="{{ (int) $dept->id }}"><span class="dept-label">{{ $dept->name }}</span></label>
+        <label class="dept-option" data-dept-id="{{ (int) $dept->id }}"><input class="dept-checkbox" type="checkbox" value="{{ (int) $dept->id }}" checked><span class="dept-label">{{ $dept->name }}</span></label>
         @if ($isAdmission || $isWaiting)
           <div class="adm-sub-block">
             <div class="dept-sub-group"><div class="dept-sub-head">Windows</div><div class="dept-sub" id="{{ $isAdmission ? 'admission-sec-sub' : 'waiting-sec-sub' }}">
@@ -45,10 +45,10 @@
       <label class="announce-row"><input type="checkbox" id="announce-toggle" checked><span class="announce-label"><i class="fa-solid fa-volume-high"></i> Voice announcements</span><button type="button" id="audio-test" class="audio-test-btn" title="Test sound"><i class="fa-solid fa-volume-up"></i></button></label>
     </div>
   </aside>
-  <main class="main-content" id="main-content"><header class="page-header"><h1>Live Queue Monitor</h1></header><div class="cards-grid" id="cards-grid"><div class="empty-state">Open the sidebar and select departments to view serving queues.</div></div><div class="footer">RHU Queue System | Live Monitor</div></main>
+  <main class="main-content" id="main-content"><header class="page-header"><h1>Live Queue Monitor</h1></header><div class="cards-grid" id="cards-grid"><div class="empty-state">Open the sidebar to adjust which departments are shown.</div></div><div class="footer">RHU Queue System | Live Monitor</div></main>
   <aside id="wait-rail" data-open="0"><div class="wait-rail-head"><h4>Waiting List</h4><span id="wait-rail-count">0</span></div><div id="wait-rail-list"></div></aside>
   <div id="audio-hint" title="Tap or press OK once so the browser will play call sounds"><i class="fa-solid fa-volume-high"></i>Press OK / tap to enable sound</div>
   <script>window._QUEUE_SOCKET_HOST=window.location.origin;</script>
-  <script src="/js/socket.io.min.js"></script><script src="/js/query-cache.js?v=20260910a"></script><script src="/js/voice-parts.js?v=20260910a"></script><script src="/js/tts-fallback.js?v=20260910a"></script><script src="/js/live.js?v=20260922f" defer></script>
+  <script src="/js/socket.io.min.js"></script><script src="/js/query-cache.js?v=20260910a"></script><script src="/js/voice-parts.js?v=20260910a"></script><script src="/js/tts-fallback.js?v=20260910a"></script><script src="/js/live.js?v=20260926a" defer></script>
 </body>
 </html>

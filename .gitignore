@@ -31,3 +31,5 @@ Thumbs.db
 /.agents
 /.claude
 /.nova
+/playwright-report
+/test-results

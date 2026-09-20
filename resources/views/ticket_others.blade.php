@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <title>Queue Ticket</title>
-<link rel="stylesheet" href="/dist/assets/module-CdqakSoB.css">
 <script type="module" src="/dist/assets/app-D1tVJTnW.js"></script>
+@inlineCss('dist/assets/module-CdqakSoB.css')
 <style>
     @media print {
         @page { size: 70mm 74mm; margin: 0; }

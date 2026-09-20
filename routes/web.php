@@ -18,6 +18,7 @@ use App\Http\Controllers\SectionController;
 use App\Http\Controllers\ServedQueuesController;
 use App\Http\Controllers\ServerHistoryController;
 use App\Http\Controllers\SidebarController;
+use App\Http\Controllers\SoundController;
 use App\Http\Controllers\TakeQueueController;
 use App\Http\Controllers\TicketOthersController;
 use App\Http\Controllers\TransferController;
@@ -35,6 +36,12 @@ Route::post('login.php', [LoginController::class, 'login'])->name('login.submit'
 // Sidebar is a fetch() target and answers 401 JSON itself (native sidebar.php),
 // so it must NOT go through the single.login redirect middleware.
 Route::get('sidebar.php', [SidebarController::class, 'index'])->name('sidebar');
+
+// Offline audio helpers (port of app/sound/serve.php + voice/check.php).
+// The native exact-match nginx blocks were replaced by these Laravel routes;
+// voice/check.php answers 401 JSON itself (native gate preserved).
+Route::get('sound/serve.php', [SoundController::class, 'serve']);
+Route::get('sound/voice/check.php', [SoundController::class, 'voiceCheck']);
 
 // Public display/monitoring endpoints (native: no auth, no CSRF):
 Route::get('get_display_data.php', [DisplayController::class, 'display']);

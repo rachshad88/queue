@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>Audit Trail - Queue</title>
-    <link rel="stylesheet" href="/css/audit.css">
-    <link rel="stylesheet" href="/dist/assets/module-CdqakSoB.css">
+    @inlineCss('dist/assets/module-CdqakSoB.css')
+    @inlineCss('css/audit.css')
     <script type="module" src="/dist/assets/app-D1tVJTnW.js"></script>
     <style>
         .controls { margin: 12px 0; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }

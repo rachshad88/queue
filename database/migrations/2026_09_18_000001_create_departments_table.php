@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('name', 100);
             $table->string('server', 100)->nullable();
             $table->string('status', 20)->nullable();
-            $table->string('prefix', 10);
+            $table->string('prefix', 10)->default('ADM');
         });
     }
 

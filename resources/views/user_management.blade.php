@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>User Management | RHU Queue</title>
-  <link rel="stylesheet" href="/dist/assets/module-CdqakSoB.css">
+  @inlineCss('dist/assets/module-CdqakSoB.css')
+  @inlineCss('css/rhu-uniform.css')
   <script type="module" src="/dist/assets/app-D1tVJTnW.js"></script>
-  <link rel="stylesheet" href="/css/rhu-uniform.css?v=20260918e">
 </head>
 <body class="min-h-screen bg-gray-50">
 <div id="sidebar-container"></div>

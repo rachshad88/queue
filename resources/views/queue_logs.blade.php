@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Queue Logs | RHU Queue</title>
-    <link rel="stylesheet" href="/dist/assets/module-CdqakSoB.css">
+    @inlineCss('dist/assets/module-CdqakSoB.css')
+    @inlineCss('css/rhu-uniform.css')
     <script type="module" src="/dist/assets/app-D1tVJTnW.js"></script>
-    <link rel="stylesheet" href="/css/rhu-uniform.css?v=20260918e">
     <style>
         .filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
         .filters label { display: block; font-size: .8rem; color: #64748b; margin-bottom: 2px; }

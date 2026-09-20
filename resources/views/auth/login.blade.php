@@ -4,15 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RHU Queue System - Login</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/css/rhu-uniform.css?v=20260918e">
-    <link rel="stylesheet" href="/dist/assets/module-CdqakSoB.css">
-    <script type="module" src="/dist/assets/login-D1tVJTnW.js"></script>
+    @inlineCss('dist/assets/module-CdqakSoB.css')
+    @inlineCss('css/fontawesome/css/all.min.css')
+    @inlineCss('css/rhu-uniform.css')
 </head>
-<body class="login-page" x-data="{ showPw: false, busy: false }">
+<body class="login-page">
 
   <!-- Layered background decorations (pure CSS, no images) -->
   <div class="login-bg" aria-hidden="true">
@@ -106,7 +102,7 @@
         <h2 class="card-title">Login Form</h2>
         <p class="card-subtitle">Sign in to continue</p>
 
-        <form method="post" id="loginForm" class="login-form" @submit="busy = true">
+        <form method="post" id="loginForm" class="login-form">
             @csrf
           <div class="field">
             <label for="username" class="field-label"><i class="fa-solid fa-user"></i> Username</label>
@@ -119,19 +115,19 @@
           <div class="field">
             <label for="password" class="field-label"><i class="fa-solid fa-lock"></i> Password</label>
             <div class="input-wrap">
-              <input :type="showPw ? 'text' : 'password'" id="password" name="password"
+              <input type="password" id="password" name="password"
                      placeholder="Enter your password" required autocomplete="current-password"
                      class="login-input login-input-pw">
-              <button type="button" @click="showPw = !showPw" class="pw-toggle"
+              <button type="button" id="pwToggle" class="pw-toggle"
                       tabindex="-1" aria-label="Toggle password visibility">
-                <i :class="showPw ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
+                <i id="pwIcon" class="fa-solid fa-eye"></i>
               </button>
             </div>
           </div>
 
-          <button type="submit" :disabled="busy" class="signin-btn">
+          <button type="submit" id="signinBtn" class="signin-btn">
             <i class="fa-solid fa-right-to-bracket"></i>
-            <span x-text="busy ? 'Signing in...' : 'Sign in'">Sign in</span>
+            <span id="signinText">Sign in</span>
           </button>
         </form>
 

@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Choose Waiting Section</title>
-    <link rel="stylesheet" href="/css/rhu-uniform.css?v=20260918e">
-    <link rel="stylesheet" href="/dist/assets/module-CdqakSoB.css">
+    @inlineCss('dist/assets/module-CdqakSoB.css')
+    @inlineCss('css/rhu-uniform.css')
     <script type="module" src="/dist/assets/choose_section-D1tVJTnW.js"></script>
 </head>
 <body class="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-5">

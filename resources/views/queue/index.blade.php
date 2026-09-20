@@ -6,10 +6,10 @@
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>RHU Queue Admin</title>
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-  <link rel="stylesheet" href="/dist/assets/module-CdqakSoB.css">
   <script type="module" src="/dist/assets/app-D1tVJTnW.js"></script>
-  <link rel="stylesheet" href="/css/rhu-uniform.css?v=20260918e">
-  <link rel="stylesheet" href="/css/controller-redesign.css?v=20260920m">
+  @inlineCss('dist/assets/module-CdqakSoB.css')
+  @inlineCss('css/rhu-uniform.css')
+  @inlineCss('css/controller-redesign.css')
   <script src="/js/notify.js"></script>
 </head>
 <body class="page-controller min-h-screen">

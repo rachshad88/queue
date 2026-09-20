@@ -1,18 +1,16 @@
 #!/usr/bin/env bash
-# Copies the native static assets (JS, CSS, sound clips) into public/ so the
-# repository is fully self-contained. The PHP handlers (serve.php and
-# voice/check.php) intentionally stay in the native tree — nginx still executes
-# them from /home/user/queue/app/sound/ while every static file is served from
-# the repo.
+# The system is fully Laravel: every asset the app needs already lives in
+# public/ and the sound helpers are Laravel routes (SoundController). The
+# native tree is archived at /home/user/archive/queue-native-*. No sync is
+# performed anymore; this script exists only to avoid breaking old deploy
+# playbooks. It exits successfully so automation chains keep working.
 set -euo pipefail
 
-SRC=/home/user/queue
 PUB="$(cd "$(dirname "$0")/.." && pwd)/public"
 
-cp -a "$SRC/js/." "$PUB/js/"
-cp -a "$SRC/css/." "$PUB/css/"
-mkdir -p "$PUB/app/sound"
-cp -a "$SRC/app/sound/." "$PUB/app/sound/"
-rm -f "$PUB/app/sound/serve.php" "$PUB/app/sound/voice/check.php"
+if [ ! -d "$PUB/app/sound" ]; then
+    echo "error: public/app/sound missing in $PUB" >&2
+    exit 1
+fi
 
-echo "static assets synced to $PUB"
+echo "no-op: repo is fully self-contained (assets in public/, sound handlers are Laravel routes)."

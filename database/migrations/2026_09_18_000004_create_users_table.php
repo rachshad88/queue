@@ -23,7 +23,7 @@ return new class extends Migration
             $table->string('position', 100)->nullable();
             $table->string('department', 100)->nullable();
             $table->integer('department_id')->nullable();
-            $table->string('status', 50);
+            $table->string('status', 50)->default('active');
             $table->string('login_token', 128)->nullable();
             $table->dateTime('last_active')->nullable();
             $table->dateTime('last_login_at')->nullable();

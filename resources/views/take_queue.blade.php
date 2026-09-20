@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <title>Ticket Issuance Disabled</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <link rel="stylesheet" href="/dist/assets/module-CdqakSoB.css">
+  @inlineCss('dist/assets/module-CdqakSoB.css')
+  @inlineCss('css/rhu-uniform.css')
   <script type="module" src="/dist/assets/app-D1tVJTnW.js"></script>
-  <link rel="stylesheet" href="/css/rhu-uniform.css?v=20260918e">
 </head>
 <body class="min-h-screen bg-gray-100 flex items-center justify-center p-4">
   @if ($isLoggedIn)

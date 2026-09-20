@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -16,10 +17,10 @@ return new class extends Migration
             $table->increments('id');
             $table->unsignedInteger('department_id');
             $table->string('queue_number', 6);
-            $table->string('status', 50);
-            $table->dateTime('created_at');
+            $table->string('status', 50)->default('waiting');
+            $table->dateTime('created_at')->default(DB::raw("CONVERT(datetime, switchoffset(sysdatetimeoffset(), '+08:00'))"));
             $table->integer('served_by')->nullable();
-            $table->string('category', 50)->nullable();
+            $table->string('category', 50)->nullable()->default('regular');
             $table->string('return_code', 10)->nullable();
             $table->dateTime('served_at')->nullable();
         });

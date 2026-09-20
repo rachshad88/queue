@@ -17,8 +17,8 @@ return new class extends Migration
             $table->increments('id');
             $table->string('section_name', 50);
             $table->integer('occupied_by')->nullable();
-            $table->dateTime('updated_at')->nullable();
-            $table->tinyInteger('status')->nullable();
+            $table->dateTime('updated_at')->nullable()->default(DB::raw("CONVERT(datetime, switchoffset(sysdatetimeoffset(), '+08:00'))"));
+            $table->tinyInteger('status')->nullable()->default(DB::raw('0'));
         });
 
         // Match the live column exactly (nvarchar vs varchar matters to the
