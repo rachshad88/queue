@@ -54,7 +54,7 @@ class TransferController extends Controller
             ->map(fn ($id) => (int) $id)
             ->all();
         $labId = (int) (DB::table('departments')
-            ->whereRaw("UPPER(TRIM(name)) = 'LABORATORY' AND status <> 'inactive'")
+            ->whereRaw("UPPER(TRIM(name)) = 'LABORATORY' AND (status IS NULL OR LOWER(status) != 'inactive')")
             ->value('id') ?? 0);
 
         $tier = 'r';
@@ -79,6 +79,7 @@ class TransferController extends Controller
                 'status' => 'waiting',
                 'served_by' => null,
                 'category' => $newCat,
+                'transferred_at' => DB::raw(config('queue.manila_now')),
             ]);
 
         $emit->logQueueAction((int) $row->id, (string) $row->queue_number, $sourceDept, $userId, 'transferred_out', $targetDept, 'serving', 'waiting');
@@ -159,12 +160,13 @@ class TransferController extends Controller
             }
         }
         if ($newNumber === null) {
+            // Laboratory returnees get a random ticket number instead of the
+            // next sequential one.
             try {
-                $seq = $numbers->nextDailySequence($currentDept);
+                $newNumber = $numbers->randomTicketNumber($currentDept, $numPrefix);
             } catch (\Throwable $e) {
                 return response()->json(['success' => false, 'message' => 'Failed to prioritize queue']);
             }
-            $newNumber = $numPrefix.'-'.str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
         }
 
         DB::table('queue')
@@ -175,6 +177,7 @@ class TransferController extends Controller
                 'status' => 'waiting',
                 'served_by' => null,
                 'category' => $newCat,
+                'transferred_at' => DB::raw(config('queue.manila_now')),
             ]);
 
         $emit->logQueueAction((int) $queueRow->id, $newNumber, $oldDept, $userId, 'prioritized_out', $currentDept, $oldStatus, 'waiting');

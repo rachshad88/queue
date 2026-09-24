@@ -166,6 +166,47 @@ class ServingFlowTest extends TestCase
         ])->assertOk();
     }
 
+    public function test_serve_random_serves_a_lab_waiting_patient(): void
+    {
+        $this->loginAs('qa_superadmin');
+        $this->seedQueueRow(5, 'L-601', 'waiting', 'regular', 300);
+        $this->seedQueueRow(5, 'L-602', 'waiting', 'regular', 200);
+        $this->seedQueueRow(5, 'L-603', 'waiting', 'regular', 100);
+
+        $response = $this->post('/serve_random.php', ['department_id' => 5])
+            ->assertOk()
+            ->assertJson(['success' => true, 'random' => true]);
+
+        $number = $response->json('queue_number');
+        $this->assertContains($number, ['L-601', 'L-602', 'L-603']);
+
+        $row = DB::table('queue')->where('queue_number', $number)->first();
+        $this->assertSame('serving', $row->status);
+        $this->assertSame($this->userId('qa_superadmin'), (int) $row->served_by);
+        $this->assertTrue(
+            DB::table('queue_log')->where('queue_number', $number)->where('action', 'serving_random')->exists()
+        );
+    }
+
+    public function test_serve_random_denied_outside_laboratory(): void
+    {
+        $this->loginAs('qa_clinic1');
+        $this->seedQueueRow(1, 'C1-960', 'waiting', 'regular', 60);
+
+        $this->post('/serve_random.php', ['department_id' => 1])
+            ->assertOk()
+            ->assertJson(['success' => false]);
+    }
+
+    public function test_serve_random_empty_lab_reports_no_patients(): void
+    {
+        $this->loginAs('qa_superadmin');
+
+        $this->post('/serve_random.php', ['department_id' => 5])
+            ->assertOk()
+            ->assertJson(['success' => false, 'message' => 'No patients waiting.']);
+    }
+
     private function queueRowId(string $number): int
     {
         return (int) DB::table('queue')->where('queue_number', $number)->value('id');

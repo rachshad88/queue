@@ -96,6 +96,33 @@ class StationService
             ->first() ?: null;
     }
 
+    /**
+     * Record the window an operator is serving through. The live wall and the
+     * display board attribute a served number to a window only through
+     * occupied_by, so a serve on a sectioned department must stamp it here --
+     * otherwise a superadmin takeover (session-scoped, never occupies) or a
+     * window released mid-consult leaves the wall blank while a row is being
+     * served. Only claims an unattended window or refreshes the operator's
+     * own: a window genuinely held by another staffer is never stolen.
+     */
+    public function markSectionOccupied(int $sectionId, int $userId, string $table): void
+    {
+        $table = strtolower(trim($table));
+        if ($sectionId < 1 || $userId < 1 || ! in_array($table, $this->sectionTables(), true)) {
+            return;
+        }
+        DB::table($table)
+            ->where('id', $sectionId)
+            ->where(function ($query) use ($userId) {
+                $query->whereNull('occupied_by')->orWhere('occupied_by', $userId);
+            })
+            ->update([
+                'occupied_by' => $userId,
+                'status' => 1,
+                'updated_at' => DB::raw(config('queue.manila_now')),
+            ]);
+    }
+
     /** Release windows abandoned more than $minutes ago. */
     public function releaseStaleSections(int $minutes = 30): void
     {

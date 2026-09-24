@@ -6,9 +6,9 @@
     <title>Served Queues Report | RHU Queue</title>
     @inlineCss('dist/assets/module-CdqakSoB.css')
     @inlineCss('css/rhu-uniform.css')
-    <script type="module" src="/dist/assets/app-D1tVJTnW.js"></script>
 </head>
-<body class="min-h-screen bg-gray-50">
+<body class="min-h-screen bg-gray-50 page-report">
+    <x-hospital-background />
     <div id="sidebar-container"></div>
 
     <main class="p-4 sm:p-6">
@@ -74,6 +74,7 @@
         </div>
     </main>
 
-    <script src="/js/sidebar.js?v=20260917c" defer></script>
+    <script src="/js/sidebar.js?v=20260923a" defer></script>
+  <script src="/js/noinspect.js?v=20260922a" defer></script>
 </body>
 </html>

@@ -1,5 +1,3 @@
-@php($occupied = !empty($row->occupied_by) && (int) $row->status === 1)
-@php($name = $occupied ? ($row->occupant_name ?: $row->occupant_user ?: ('User #' . (int) $row->occupied_by)) : null)
 <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
   <div class="overflow-x-auto">
     <table class="w-full text-sm">
@@ -30,9 +28,8 @@
             <td class="px-4 py-3 text-right">
               @if ($occupied)
                 <button class="release-btn rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-red-700 active:scale-[0.98]"
-                        data-type="{{ $type }}"
-                        data-id="{{ (int) $row->id }}"
-                        data-name="{{ $row->section_name }}">Logout</button>
+                        wire:click="release('{{ $type }}', {{ (int) $row->id }})"
+                        wire:confirm="Force logout staff from '{{ $row->section_name }}'? The station will become free immediately.">Logout</button>
               @else
                 <button class="cursor-not-allowed rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-400" disabled>Logout</button>
               @endif

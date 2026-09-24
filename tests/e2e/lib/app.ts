@@ -89,7 +89,8 @@ const TICKET_NUMBER_RE = /^[A-Z]+-\d{3}$/;
 
 // Issues a ticket at a public kiosk. The POST redirects to ticket_others.php
 // carrying queue_number & code, which the kiosk beacon captures deterministi-
-// cally (the page itself auto-prints and navigates away within ~1s).
+// cally (the ticket page returns to the kiosk after the print dialog closes,
+// or via its fallback timer).
 export async function issueTicket(
   page: Page,
   kioskPath: string,

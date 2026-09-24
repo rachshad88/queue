@@ -20,11 +20,9 @@ class LogoutController extends Controller
             $stationService->releaseSectionsForUser($userId);
 
             // Release the single-device login lock (non-admin accounts only).
-            $isSuperadmin = (bool) Session::get('is_superadmin', false);
             $usertype = (string) Session::get('usertype', '');
-            $isExempt = $isSuperadmin
-                || $usertype === 'admin'
-                || $usertype === 'superadmin';
+            $isExempt = (bool) Session::get('is_superadmin', false)
+                || $singleLogin->isExempt($usertype);
 
             if (! $isExempt && ($token = Session::get('login_token'))) {
                 $singleLogin->clearLoginToken($userId, (string) $token);

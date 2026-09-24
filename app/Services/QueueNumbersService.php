@@ -12,9 +12,6 @@ use Illuminate\Support\Facades\DB;
  */
 class QueueNumbersService
 {
-    /** Manila day expression used for the daily_counters key (server TZ is UTC). */
-    public const MANILA_DAY = "CAST(SWITCHOFFSET(SYSDATETIMEOFFSET(), '+08:00') AS DATE)";
-
     /**
      * Prefix pair for a department: ABTC departments use AR/AP/AE, all others
      * R/P/E.
@@ -37,7 +34,7 @@ class QueueNumbersService
         return DB::transaction(function () use ($departmentId) {
             $row = DB::selectOne(
                 'SELECT last_number FROM daily_counters WITH (UPDLOCK, HOLDLOCK)
-                 WHERE department_id = ? AND day = '.self::MANILA_DAY,
+                 WHERE department_id = ? AND day = '.config('queue.manila_today'),
                 [$departmentId]
             );
 
@@ -45,7 +42,7 @@ class QueueNumbersService
                 $next = (int) $row->last_number + 1;
                 DB::update(
                     'UPDATE daily_counters SET last_number = ?
-                     WHERE department_id = ? AND day = '.self::MANILA_DAY,
+                     WHERE department_id = ? AND day = '.config('queue.manila_today'),
                     [$next, $departmentId]
                 );
 
@@ -54,7 +51,7 @@ class QueueNumbersService
 
             DB::insert(
                 'INSERT INTO daily_counters (department_id, day, last_number)
-                 VALUES (?, '.self::MANILA_DAY.', ?)',
+                 VALUES (?, '.config('queue.manila_today').', ?)',
                 [$departmentId, 1]
             );
 
@@ -78,6 +75,41 @@ class QueueNumbersService
         }
 
         throw new \RuntimeException('Could not generate unique return code.');
+    }
+
+    /**
+     * Random ticket number for a department (e.g. laboratory returnees):
+     * PREFIX-### with ### drawn from 001-999. Candidates are checked against
+     * today's rows so an issued number is never duplicated; when the random
+     * space is exhausted it scans sequentially, then fails loudly so the
+     * caller shows "try again" instead of printing a duplicate ticket.
+     */
+    public function randomTicketNumber(int $departmentId, string $prefix): string
+    {
+        for ($attempt = 0; $attempt < 100; $attempt++) {
+            $candidate = $prefix.'-'.str_pad((string) random_int(1, 999), 3, '0', STR_PAD_LEFT);
+            if (! $this->ticketNumberTakenToday($departmentId, $candidate)) {
+                return $candidate;
+            }
+        }
+
+        for ($seq = 1; $seq <= 999; $seq++) {
+            $candidate = $prefix.'-'.str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
+            if (! $this->ticketNumberTakenToday($departmentId, $candidate)) {
+                return $candidate;
+            }
+        }
+
+        throw new \RuntimeException('No ticket numbers available.');
+    }
+
+    public function ticketNumberTakenToday(int $departmentId, string $queueNumber): bool
+    {
+        return DB::table('queue')
+            ->where('department_id', $departmentId)
+            ->where('queue_number', $queueNumber)
+            ->whereRaw('created_at >= '.config('queue.manila_today'))
+            ->exists();
     }
 
     /**

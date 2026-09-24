@@ -5,7 +5,6 @@
     <title>Audit Trail - Queue</title>
     @inlineCss('dist/assets/module-CdqakSoB.css')
     @inlineCss('css/audit.css')
-    <script type="module" src="/dist/assets/app-D1tVJTnW.js"></script>
     <style>
         .controls { margin: 12px 0; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
         .controls input[type="text"] { padding:6px 8px; min-width:220px; }
@@ -68,6 +67,7 @@
     @else
         <p style="margin-top:30px;color:#888;">Please select a department or enter a queue number to view the audit trail.</p>
     @endif
+  <script src="/js/noinspect.js?v=20260922a" defer></script>
 </body>
-<script src="/js/sidebar.js?v=20260917c" defer></script>
+<script src="/js/sidebar.js?v=20260923a" defer></script>
 </html>

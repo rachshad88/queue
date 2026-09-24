@@ -24,8 +24,17 @@ class SidebarController extends Controller
             return response()->json(['error' => 'Logged in on another device'], 401);
         }
 
-        $path = trim((string) $request->path(), '/');
-        $currentPage = $path === '' ? 'index.php' : basename($path);
+        // The sidebar is fetched via AJAX (sidebar.php), so the active page is
+        // the Referer (the .php page that injected the sidebar), not the AJAX path.
+        $currentPage = 'index.php';
+        $referer = (string) $request->headers->get('referer', '');
+        if ($referer !== '') {
+            $refPath = (string) parse_url($referer, PHP_URL_PATH);
+            $refBase = basename($refPath);
+            if ($refBase !== '' && $refBase !== 'sidebar.php') {
+                $currentPage = $refBase;
+            }
+        }
 
         $username = (string) Session::get('username', '');
         $dept = (string) Session::get('department', '');

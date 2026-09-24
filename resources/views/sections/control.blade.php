@@ -7,7 +7,6 @@
   <title>Section Control | RHU Queue</title>
   @inlineCss('dist/assets/module-CdqakSoB.css')
   @inlineCss('css/rhu-uniform.css')
-  <script type="module" src="/dist/assets/app-D1tVJTnW.js"></script>
 </head>
 <body class="min-h-screen bg-gray-50">
 <div id="sidebar-container"></div>
@@ -21,53 +20,12 @@
       <span>Superadmin &middot; Force logout staff from admission / waiting area stations.</span>
     </div>
 
-    <div class="mb-5">
-      <h2 class="mb-3 text-base font-semibold text-slate-800">Admission Windows</h2>
-      @php($typeLabel = 'Admission Windows')
-      @include('sections._control_table', ['rows' => $admission, 'typeLabel' => $typeLabel, 'type' => 'admission'])
-    </div>
-
-    <div class="mb-5">
-      <h2 class="mb-3 text-base font-semibold text-slate-800">Waiting Area Windows</h2>
-      @include('sections._control_table', ['rows' => $waiting, 'typeLabel' => 'Waiting Area Windows', 'type' => 'waiting'])
-    </div>
+    <livewire:sections-control />
   </div>
 </main>
 
-<script src="/js/sidebar.js?v=20260917c" defer></script>
-<script>
-document.addEventListener('click', async (e) => {
-  const btn = e.target.closest('button.release-btn');
-  if (!btn) return;
-
-  const name = btn.getAttribute('data-name');
-  if (!confirm('Force logout staff from "' + name + '"? The station will become free immediately.')) return;
-
-  btn.disabled = true;
-  btn.textContent = 'Releasing...';
-  const body = new URLSearchParams();
-  body.set('type', btn.getAttribute('data-type'));
-  body.set('section_id', btn.getAttribute('data-id'));
-  const cm = document.querySelector('meta[name="csrf-token"]');
-  if (cm && cm.content) body.set('csrf_token', cm.content);
-
-  try {
-    const resp = await fetch('release_section.php', { method: 'POST', body });
-    const result = await resp.json();
-    if (result.success) {
-      location.reload();
-    } else {
-      alert(result.message || 'Failed to release section.');
-      btn.disabled = false;
-      btn.textContent = 'Logout';
-    }
-  } catch (err) {
-    console.error(err);
-    alert('Error while releasing section.');
-    btn.disabled = false;
-    btn.textContent = 'Logout';
-  }
-});
-</script>
+<script src="/js/sidebar.js?v=20260923a" defer></script>
+@include('partials.frontend', ['livewire' => true])
+  <script src="/js/noinspect.js?v=20260922a" defer></script>
 </body>
 </html>

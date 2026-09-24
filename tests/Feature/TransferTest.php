@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Services\QueueNumbersService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class TransferTest extends TestCase
@@ -85,6 +87,56 @@ class TransferTest extends TestCase
 
         $this->assertSame(4, (int) session('department_id'));
         $this->assertSame('CLINIC 3', session('department'));
+    }
+
+    public function test_lab_prioritize_issues_random_ticket_number(): void
+    {
+        DB::table('users')->updateOrInsert(['username' => 'qa_labtech'], [
+            'password' => Hash::make('testpass!123'),
+            'usertype' => 'staff',
+            'firstname' => 'QA',
+            'lastname' => 'Lab',
+            'middlename' => null,
+            'position' => 'QA',
+            'department_id' => 5,
+            'department' => 'LABORATORY',
+            'status' => 'active',
+            'login_token' => null,
+            'last_active' => null,
+            'last_login_at' => null,
+            'last_ip' => null,
+        ]);
+        $this->loginAs('qa_labtech');
+
+        // Occupy the reused-candidate number so issuance must draw randomly.
+        $this->seedQueueRow(5, 'R-700', 'waiting', 'regular', 60);
+        $returnee = $this->seedQueueRow(1, 'C1-700', 'done', 'regular', 3600);
+        DB::table('queue')->where('id', $returnee)->update(['return_code' => 'TST1']);
+
+        $response = $this->post('/prioritize_queue.php', ['code' => 'TST1'])
+            ->assertOk()
+            ->assertJson(['success' => true]);
+
+        $number = $response->json('queue_number');
+        $this->assertMatchesRegularExpression('/^R-\d{3}$/', $number);
+        $this->assertNotSame('R-700', $number);
+
+        $row = DB::table('queue')->where('id', $returnee)->first();
+        $this->assertSame(5, (int) $row->department_id);
+        $this->assertSame('waiting', $row->status);
+        $this->assertSame('priority', $row->category);
+        $this->assertNotNull($row->transferred_at);
+    }
+
+    public function test_lab_prioritize_random_numbers_are_unique(): void
+    {
+        $numbers = app(QueueNumbersService::class);
+        $first = $numbers->randomTicketNumber(5, 'R');
+        $this->seedQueueRow(5, $first, 'waiting', 'regular', 60);
+        $second = $numbers->randomTicketNumber(5, 'R');
+
+        $this->assertMatchesRegularExpression('/^R-\d{3}$/', $first);
+        $this->assertNotSame($first, $second);
     }
 
     private function queueRowId(string $number): int

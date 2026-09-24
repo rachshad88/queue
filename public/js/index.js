@@ -257,6 +257,22 @@ window.repeatCall = repeatCall;
 let _servingPool = false;
 let _pendingPoolServe = null;
 
+function hideMsg(msg) {
+  if (!msg) return;
+  msg.style.display = 'none';
+  msg.textContent = '';
+  msg.classList.remove('ctrl-msg-ok', 'ctrl-msg-err');
+}
+
+function showMsg(msg, text, type) {
+  if (!msg) return;
+  msg.textContent = text;
+  msg.classList.remove('ctrl-msg-ok', 'ctrl-msg-err');
+  if (type === 'ok') msg.classList.add('ctrl-msg-ok');
+  else msg.classList.add('ctrl-msg-err');
+  msg.style.display = 'block';
+}
+
 function openPoolServeModal(qid, dep) {
   _pendingPoolServe = { qid: String(qid), dep: String(dep) };
   const modal = document.getElementById('poolServeModal');
@@ -264,7 +280,7 @@ function openPoolServeModal(qid, dep) {
   const pass = document.getElementById('poolServePassword');
   const msg = document.getElementById('poolServeMessage');
   if (pass) pass.value = '';
-  if (msg) { msg.style.display = 'none'; msg.textContent = ''; }
+  hideMsg(msg);
   modal.style.display = 'flex';
   if (pass) pass.focus();
 }
@@ -273,20 +289,19 @@ function closePoolServeModal() {
   _pendingPoolServe = null;
   const modal = document.getElementById('poolServeModal');
   if (modal) modal.style.display = 'none';
-  const msg = document.getElementById('poolServeMessage');
-  if (msg) { msg.style.display = 'none'; msg.textContent = ''; }
+  hideMsg(document.getElementById('poolServeMessage'));
 }
 
 async function submitPoolServe() {
   const msg = document.getElementById('poolServeMessage');
-  if (msg) { msg.style.display = 'none'; msg.textContent = ''; }
+  hideMsg(msg);
   if (!_pendingPoolServe) {
-    if (msg) { msg.textContent = 'No patient selected.'; msg.style.color = 'red'; msg.style.display = 'block'; }
+    showMsg(msg, 'No patient selected.', 'err');
     return;
   }
   const password = document.getElementById('poolServePassword')?.value || '';
   if (!password) {
-    if (msg) { msg.textContent = 'Enter your password first.'; msg.style.color = 'red'; msg.style.display = 'block'; }
+    showMsg(msg, 'Enter your password first.', 'err');
     return;
   }
   if (_servingPool) return;
@@ -316,9 +331,7 @@ async function submitPoolServe() {
       if (typeof refreshPoolPanel === 'function') refreshPoolPanel();
     } else {
       if (msg) {
-        msg.textContent = result.message || 'Unable to pull this patient.';
-        msg.style.color = 'red';
-        msg.style.display = 'block';
+        showMsg(msg, result.message || 'Unable to pull this patient.', 'err');
       } else {
         Notify.toast(result.message || 'Unable to pull this patient.', 'error');
       }
@@ -326,7 +339,7 @@ async function submitPoolServe() {
     }
   } catch (e) {
     console.error(e);
-    if (msg) { msg.textContent = 'An error occurred.'; msg.style.color = 'red'; msg.style.display = 'block'; }
+    showMsg(msg, 'An error occurred.', 'err');
   } finally {
     _servingPool = false;
   }
@@ -339,6 +352,8 @@ function servePool(qid, dep) {
 window.servePool = servePool;
 window.closePoolServeModal = closePoolServeModal;
 window.submitPoolServe = submitPoolServe;
+window.showMsg = showMsg;
+window.hideMsg = hideMsg;
 
 // Per-row "Serve" action. Requires physician/admin approval first: opens the
 // approval modal (no side effects). The actual serve (which server-side finishes
@@ -356,7 +371,7 @@ function serveQueue(qid) {
   const pass = document.getElementById('approverPassword');
   const msg = document.getElementById('approvalMessage');
   if (pass) pass.value = '';
-  if (msg) { msg.style.display = 'none'; msg.textContent = ''; }
+  hideMsg(msg);
   modal.style.display = 'flex';
   if (pass) pass.focus();
 }
@@ -365,21 +380,20 @@ function closeApprovalModal() {
   pendingServeQid = null;
   const modal = document.getElementById('approvalModal');
   if (modal) modal.style.display = 'none';
-  const msg = document.getElementById('approvalMessage');
-  if (msg) { msg.style.display = 'none'; msg.textContent = ''; }
+  hideMsg(document.getElementById('approvalMessage'));
 }
 
 let _submittingApproval = false;
 async function submitApproval() {
   const msg = document.getElementById('approvalMessage');
-  if (msg) { msg.style.display = 'none'; msg.textContent = ''; }
+  hideMsg(msg);
   if (!pendingServeQid) {
-    if (msg) { msg.textContent = 'No queue selected.'; msg.style.color = 'red'; msg.style.display = 'block'; }
+    showMsg(msg, 'No queue selected.', 'err');
     return;
   }
   const password = document.getElementById('approverPassword')?.value || '';
   if (!password) {
-    if (msg) { msg.textContent = 'Enter the approving physician or admin password.'; msg.style.color = 'red'; msg.style.display = 'block'; }
+    showMsg(msg, 'Enter the approving physician or admin password.', 'err');
     return;
   }
 
@@ -420,16 +434,14 @@ async function submitApproval() {
       } catch (e) {}
     } else {
       if (msg) {
-        msg.textContent = d.message || "Unable to serve this queue.";
-        msg.style.color = 'red';
-        msg.style.display = 'block';
+        showMsg(msg, d.message || "Unable to serve this queue.", "err");
       } else {
         Notify.toast(d.message || "Unable to serve this queue.", "error");
       }
     }
   } catch (e) {
     console.error(e);
-    if (msg) { msg.textContent = "An error occurred."; msg.style.color = 'red'; msg.style.display = 'block'; }
+    showMsg(msg, "An error occurred.", "err");
   } finally {
     _submittingApproval = false;
   }
@@ -499,13 +511,11 @@ async function serveNext() {
       } catch (e) {}
 
       // Leave the button inert for 2s: drop focus so a held key can't retrigger
-      // it, then re-enable through a timer that defers to refreshTable's own
-      // state (waiting-area operators stay disabled while still holding a
-      // serving row).
+      // it. The re-enabled state is decided by refreshTable, which keeps the
+      // buttons disabled while this operator still holds a serving row.
       if (btn) btn.blur();
       _serveGraceTimer = setTimeout(function () {
         _serveGraceTimer = null;
-        if (btn) { btn.disabled = false; }
         if (typeof refreshTable === "function") { try { refreshTable(dep); } catch (e) {} }
       }, 2000);
       return;
@@ -515,10 +525,66 @@ async function serveNext() {
   } catch (e) {
     console.error(e);
     Notify.toast("Error while serving next", "error");
+} finally {
+      // A scheduled success grace timer defers to refreshTable (which keeps the
+      // button disabled while still holding a serving row); otherwise restore
+      // it immediately (failure/empty path).
+      if (btn && !_serveGraceTimer) btn.disabled = false;
+    }
+}
+
+// Serve a random waiting patient (Laboratory only). Same finish-then-serve
+// flow and anti-double-click grace as serveNext, but the backend picks with
+// ORDER BY NEWID() instead of FIFO order.
+let _serveRandomGraceTimer = null;
+async function serveRandom() {
+  const dep = document.getElementById("department_id")?.value;
+  const depName = document.querySelector("span strong")?.textContent || "";
+  const depLabel = depName;
+  if (!dep) return Notify.toast("No department found.", "error");
+
+  const btn = document.getElementById("serve-random");
+
+  try {
+    if (btn) btn.disabled = true;
+    if (_serveRandomGraceTimer) { clearTimeout(_serveRandomGraceTimer); _serveRandomGraceTimer = null; }
+
+    // Finish current serving
+    await httpJson("POST", "finish.php", "department_id=" + encodeURIComponent(dep));
+
+    // Serve a random patient
+    const d = await httpJson("POST", "serve_random.php", "department_id=" + encodeURIComponent(dep));
+
+    if (d.success) {
+      Notify.toast(
+        "Now Serving: " + d.queue_number + (depLabel ? " (" + depLabel + ")" : ""),
+        "info"
+      );
+
+      try {
+        lastServedNumber = d.queue_number;
+        lastServedDept = depLabel || lastServedDept;
+        announceServeNext(d.queue_number);
+      } catch (e) {}
+
+      try {
+        if (typeof refreshTable === "function") refreshTable(dep);
+      } catch (e) {}
+
+      if (btn) btn.blur();
+      _serveRandomGraceTimer = setTimeout(function () {
+        _serveRandomGraceTimer = null;
+        if (typeof refreshTable === "function") { try { refreshTable(dep); } catch (e) {} }
+      }, 2000);
+      return;
+    } else {
+      Notify.toast(d.message || "No patients in queue", "info");
+    }
+  } catch (e) {
+    console.error(e);
+    Notify.toast("Error while serving random patient", "error");
   } finally {
-    // A scheduled success grace timer re-enables the button; otherwise restore
-    // it immediately (failure/empty path).
-    if (btn && !_serveGraceTimer) btn.disabled = false;
+    if (btn && !_serveRandomGraceTimer) btn.disabled = false;
   }
 }
 

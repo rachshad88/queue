@@ -40,10 +40,13 @@ class TicketOthersController extends Controller
             return response('Queue record not found.');
         }
 
+        $departmentName = (string) (DB::table('departments')->where('id', $departmentId)->value('name') ?? '');
+
         return view('ticket_others', [
             'queueNumber' => (string) $queue->queue_number,
+            'departmentName' => trim($departmentName) !== '' ? $departmentName : "Department $departmentId",
             'returnCode' => (string) ($queue->return_code ?? ''),
-            'printedAt' => date('Y-m-d H:i:s'),
+            'printedAt' => date('Y-m-d h:i:s A'),
         ]);
     }
 }

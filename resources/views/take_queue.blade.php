@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   @inlineCss('dist/assets/module-CdqakSoB.css')
   @inlineCss('css/rhu-uniform.css')
-  <script type="module" src="/dist/assets/app-D1tVJTnW.js"></script>
 </head>
 <body class="min-h-screen bg-gray-100 flex items-center justify-center p-4">
   @if ($isLoggedIn)
@@ -22,8 +21,9 @@
     </div>
   </div>
 
+  <script src="/js/noinspect.js?v=20260922a" defer></script>
 </body>
 @if ($isLoggedIn)
-<script src="/js/sidebar.js?v=20260917c" defer></script>
+<script src="/js/sidebar.js?v=20260923a" defer></script>
 @endif
 </html>

@@ -28,6 +28,15 @@ class QueueController extends Controller
         $userId = (int) Session::get('user_id', 0);
         $isSuperadmin = ! empty(Session::get('is_superadmin', false));
 
+        // Header profile data (same session source as the shared sidebar).
+        $username = (string) Session::get('username', '');
+        $usertype = (string) Session::get('usertype', '');
+        $initials = '';
+        if ($username !== '') {
+            $parts = explode(' ', $username);
+            $initials = strtoupper(mb_substr($parts[0], 0, 1).(isset($parts[1]) ? mb_substr($parts[1], 0, 1) : ''));
+        }
+
         $deptName = '';
         $deptServer = '';
         if ($deptId > 0) {
@@ -87,6 +96,9 @@ class QueueController extends Controller
         return view('queue.index', [
             'deptName' => $deptName,
             'deptServer' => $deptServer,
+            'username' => $username,
+            'usertype' => $usertype,
+            'initials' => $initials,
             'activeSectionTable' => $activeSectionTable,
             'activeWindow' => $activeWindow,
             'takeoverSections' => $takeoverSections,
@@ -136,8 +148,9 @@ class QueueController extends Controller
             }
 
             $serving = DB::select(
-                "SELECT id, queue_number, status, category FROM queue
-                 WHERE department_id=? AND served_by=? AND LOWER(status)='serving'",
+                "SELECT id, queue_number, status, category, created_at, transferred_at FROM queue
+                 WHERE department_id=? AND served_by=? AND LOWER(status)='serving'
+                   AND created_at >= ".config('queue.manila_today'),
                 [$departmentId, $userId ?: $sessionUserId]
             );
             foreach ($serving as $row) {
@@ -147,19 +160,23 @@ class QueueController extends Controller
                     'status' => $row->status,
                     'served_by' => $userId ?: $sessionUserId,
                     'category' => $row->category ?? 'regular',
+                    'created_at' => isset($row->created_at) ? (string) $row->created_at : null,
+                    'transferred_at' => isset($row->transferred_at) ? (string) $row->transferred_at : null,
                 ];
             }
 
             if ($canServePriority) {
                 $waiting = DB::select(
-                    "SELECT id, queue_number, status, category FROM queue WHERE department_id=? AND status IN ('waiting','hold')
+                    "SELECT id, queue_number, status, category, created_at, transferred_at FROM queue WHERE department_id=? AND status IN ('waiting','hold')
+                       AND created_at >= ".config('queue.manila_today')."
                      ORDER BY CASE category WHEN 'emergency' THEN 0 WHEN 'priority' THEN 1 ELSE 2 END, created_at ASC",
                     [$departmentId]
                 );
             } else {
                 $waiting = DB::select(
-                    "SELECT id, queue_number, status, category FROM queue WHERE department_id=? AND status IN ('waiting','hold') AND category='regular'
-                     ORDER BY created_at ASC",
+                    "SELECT id, queue_number, status, category, created_at, transferred_at FROM queue WHERE department_id=? AND status IN ('waiting','hold') AND category='regular'
+                       AND created_at >= ".config('queue.manila_today').'
+                     ORDER BY created_at ASC',
                     [$departmentId]
                 );
             }
@@ -170,12 +187,15 @@ class QueueController extends Controller
                     'status' => $w->status,
                     'served_by' => null,
                     'category' => $w->category ?? 'regular',
+                    'created_at' => isset($w->created_at) ? (string) $w->created_at : null,
+                    'transferred_at' => isset($w->transferred_at) ? (string) $w->transferred_at : null,
                 ];
             }
         } else {
             $rows = DB::select(
-                "SELECT id, queue_number, status, served_by, category FROM queue
+                'SELECT id, queue_number, status, served_by, category, created_at, transferred_at FROM queue
                  WHERE department_id=?
+                   AND created_at >= '.config('queue.manila_today')."
                    AND LOWER(status) IN ('waiting','serving','hold')
                  ORDER BY CASE WHEN LOWER(status)='serving' THEN 0
                                WHEN category='emergency' THEN 1
@@ -191,6 +211,8 @@ class QueueController extends Controller
                     'status' => $q->status,
                     'served_by' => isset($q->served_by) ? (int) $q->served_by : null,
                     'category' => $q->category ?? 'regular',
+                    'created_at' => isset($q->created_at) ? (string) $q->created_at : null,
+                    'transferred_at' => isset($q->transferred_at) ? (string) $q->transferred_at : null,
                 ];
             }
         }
@@ -221,6 +243,8 @@ class QueueController extends Controller
         // Self-heal: rows stuck in 'serving' for >60 minutes are abandoned
         // sessions (crash, closed browser, staff switch). Finish them so the
         // "Now Serving" display and Repeat Call never freeze on stale numbers.
+        // No created_at bound: abandoned rows from previous days must also
+        // clear on the next serve click.
         $stale = DB::select(
             'SELECT TOP 50 id, queue_number FROM queue
              WHERE department_id = ? AND status = \'serving\'
@@ -255,6 +279,9 @@ class QueueController extends Controller
                 [$departmentId, $servedBy]
             );
             if ($check) {
+                // Re-stamp the window: the section may have been released
+                // (idle sweep, logout) while this row is still being served.
+                $stations->markSectionOccupied((int) $sectionId, $servedBy, $sectionsTable);
                 $emit->serveUpdate($departmentId, $servedBy, $sectionId, (string) $check[0]->queue_number, $section->section_name ?? null);
 
                 return response()->json(['success' => true, 'queue_number' => (string) $check[0]->queue_number, 'message' => 'Already serving this queue.']);
@@ -266,7 +293,8 @@ class QueueController extends Controller
 
             foreach ($orders as $category) {
                 $row = DB::select(
-                    "SELECT TOP 1 id, queue_number FROM queue WHERE department_id=? AND status='waiting' AND category=? ORDER BY created_at ASC",
+                    "SELECT TOP 1 id, queue_number FROM queue WHERE department_id=? AND status='waiting' AND category=?
+                       AND created_at >= ".config('queue.manila_today').' ORDER BY created_at ASC',
                     [$departmentId, $category]
                 );
                 if (! $row) {
@@ -276,6 +304,10 @@ class QueueController extends Controller
                     "UPDATE queue SET status='serving',served_by=?,served_at=".config('queue.manila_now').' WHERE id=?',
                     [$servedBy, (int) $row[0]->id]
                 );
+                // Record the window served through: the live wall and display
+                // board attribute the number to a window via occupied_by, so a
+                // serve without a recorded window leaves the wall blank.
+                $stations->markSectionOccupied((int) $sectionId, $servedBy, $sectionsTable);
                 $emit->logQueueAction((int) $row[0]->id, (string) $row[0]->queue_number, $departmentId, $servedBy, 'serving', null, 'waiting', 'serving');
                 $emit->serveUpdate($departmentId, $servedBy, $sectionId, (string) $row[0]->queue_number, $section->section_name ?? null);
 
@@ -311,6 +343,7 @@ class QueueController extends Controller
             // 2) Atomically claim the next waiting patient.
             $row = DB::select(
                 "SELECT TOP 1 id, queue_number FROM queue WHERE department_id=? AND status='waiting'
+                   AND created_at >= ".config('queue.manila_today')."
                  ORDER BY CASE category WHEN 'emergency' THEN 0 WHEN 'priority' THEN 1 ELSE 2 END, created_at ASC",
                 [$departmentId]
             );
@@ -358,6 +391,91 @@ class QueueController extends Controller
         }
     }
 
+    /**
+     * Laboratory-only: serve a RANDOM waiting patient instead of FIFO order.
+     * Mirrors serveNext (operator lock, finish-then-serve, guarded claim) but
+     * picks with ORDER BY NEWID(). Retries the pick when a race loses the
+     * claim so a collision never surfaces as a false "no patients" answer.
+     */
+    public function serveRandom(Request $request, EmitService $emit, PoolService $pool, SingleLoginService $singleLogin)
+    {
+        $servedBy = (int) Session::get('user_id', 0);
+        $departmentId = (int) $request->input('department_id', 0);
+        $isSuperadmin = ! empty(Session::get('is_superadmin', false));
+
+        if ($servedBy > 0) {
+            $singleLogin->stampActivity($servedBy, $singleLogin->clientIp($request));
+        }
+
+        if (! $servedBy || ! $departmentId) {
+            return response()->json(['success' => false, 'message' => 'Invalid department or user.']);
+        }
+
+        if (! $isSuperadmin && (int) Session::get('department_id', 0) !== $departmentId) {
+            return response()->json(['success' => false, 'message' => 'Access denied for this department.']);
+        }
+
+        $deptName = (string) (DB::table('departments')->where('id', $departmentId)->value('name') ?? '');
+        if (stripos($deptName, 'laborat') === false) {
+            return response()->json(['success' => false, 'message' => 'Random serve is only available for the LABORATORY department.']);
+        }
+
+        DB::beginTransaction();
+        if (! $pool->acquireOperatorServeLock($servedBy)) {
+            DB::rollBack();
+
+            return response()->json(['success' => false, 'message' => 'Another serve is already in progress.']);
+        }
+
+        try {
+            // Finish-then-serve: retire the operator's current serving row (if any).
+            $current = DB::select(
+                "SELECT id, queue_number FROM queue WHERE department_id=? AND status='serving' AND served_by=?",
+                [$departmentId, $servedBy]
+            );
+            foreach ($current as $cur) {
+                $upd = DB::update("UPDATE queue SET status='done' WHERE id=? AND status='serving'", [(int) $cur->id]);
+                if ($upd === 1) {
+                    $emit->logQueueAction((int) $cur->id, (string) $cur->queue_number, $departmentId, $servedBy, 'finished', null, 'serving', 'done');
+                }
+            }
+
+            for ($attempt = 0; $attempt < 3; $attempt++) {
+                $row = DB::selectOne(
+                    "SELECT TOP 1 id, queue_number FROM queue WHERE department_id=? AND status='waiting'
+                       AND created_at >= ".config('queue.manila_today').'
+                     ORDER BY NEWID()',
+                    [$departmentId]
+                );
+                if (! $row) {
+                    break;
+                }
+                $upd = DB::update(
+                    "UPDATE queue SET status='serving',served_by=?,served_at=".config('queue.manila_now')."
+                     WHERE id=? AND department_id=? AND status='waiting'
+                       AND NOT EXISTS (SELECT 1 FROM queue q2 WHERE q2.department_id=? AND q2.served_by=? AND q2.status='serving')",
+                    [$servedBy, (int) $row->id, $departmentId, $departmentId, $servedBy]
+                );
+                if ($upd === 1) {
+                    $emit->logQueueAction((int) $row->id, (string) $row->queue_number, $departmentId, $servedBy, 'serving_random', null, 'waiting', 'serving');
+                    $emit->serveUpdate($departmentId, $servedBy, null, (string) $row->queue_number, $this->departmentName($departmentId));
+                    DB::commit();
+
+                    return response()->json(['success' => true, 'queue_number' => (string) $row->queue_number, 'random' => true]);
+                }
+                // Lost the claim race (or already serving): re-pick.
+            }
+
+            DB::rollBack();
+
+            return response()->json(['success' => false, 'message' => 'No patients waiting.']);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return response()->json(['success' => false, 'message' => 'Could not serve a random patient.']);
+        }
+    }
+
     public function finish(Request $request, EmitService $emit)
     {
         $departmentId = (int) $request->input('department_id', 0);
@@ -391,22 +509,27 @@ class QueueController extends Controller
             ->where('status', 'serving')
             ->update(['status' => 'done']);
 
-        if ($affected !== false) {
-            if ($servingRow) {
-                $emit->logQueueAction((int) $servingRow->id, (string) $servingRow->queue_number, $departmentId, $servedBy, 'finished', null, 'serving', 'done');
-            }
-            $emit->queueUpdated($departmentId);
-
-            return response()->json(['success' => true, 'message' => 'Queue marked as done.']);
+        if ($affected === false) {
+            return response()->json(['success' => false, 'message' => 'Failed to update queue status.']);
         }
 
-        return response()->json(['success' => false, 'message' => 'Failed to update queue status.']);
+        if ($affected === 0) {
+            return response()->json(['success' => false, 'message' => 'Nothing is currently being served.']);
+        }
+
+        if ($servingRow) {
+            $emit->logQueueAction((int) $servingRow->id, (string) $servingRow->queue_number, $departmentId, $servedBy, 'finished', null, 'serving', 'done');
+        }
+        $emit->queueUpdated($departmentId);
+
+        return response()->json(['success' => true, 'message' => 'Queue marked as done.']);
     }
 
     public function queueAction(Request $request, EmitService $emit, PoolService $pool, StationService $stations)
     {
         $departmentId = (int) Session::get('department_id', 0);
         $userId = (int) Session::get('user_id', 0);
+        $isSuperadmin = ! empty(Session::get('is_superadmin', false));
         $action = strtolower(trim((string) $request->input('action', '')));
         $queueId = (int) $request->input('queue_id', 0);
 
@@ -433,10 +556,24 @@ class QueueController extends Controller
         $newStatus = null;
         $isSectioned = in_array($departmentId, [(int) config('queue.admission_dept_id'), (int) config('queue.waiting_dept_id')], true);
 
+        // Hold/unhold/remove act on a specific row: holding another operator's
+        // live serving row would kick their patient off the window, so a
+        // serving row may only be held by its owner (or a superadmin).
+        if ($action === 'hold' && $current === 'serving'
+            && ! $isSuperadmin && (int) ($row->served_by ?? 0) !== $userId) {
+            return response()->json(['success' => false, 'message' => 'Only the serving operator can hold this queue']);
+        }
+
         switch ($action) {
             case 'serve':
                 if ($current !== 'waiting') {
                     return response()->json(['success' => false, 'message' => 'Only waiting queues can be served']);
+                }
+
+                // Sectioned departments (admission/waiting) require an assigned
+                // window before serving, mirroring serve_next.php.
+                if ($isSectioned && ! $stations->operatorSection($userId, $departmentId)) {
+                    return response()->json(['success' => false, 'message' => 'Not assigned to a section.']);
                 }
 
                 $approval = $this->verifyServeApproval((string) $request->input('approver_password', ''));
@@ -532,6 +669,11 @@ class QueueController extends Controller
             if ($secTable !== null) {
                 $opSec = $stations->operatorSection($userId, $departmentId);
                 $section = $opSec->section_name ?? null;
+                // Same serve-time window record as serve_next.php so the wall
+                // and display board attribute this number to the window.
+                if (isset($opSec->id)) {
+                    $stations->markSectionOccupied((int) $opSec->id, $userId, $secTable);
+                }
             }
             if ($section !== null && $section !== '') {
                 $payload['section'] = (string) $section;
@@ -568,7 +710,22 @@ class QueueController extends Controller
             return response()->json(['success' => false, 'message' => 'Access denied for this department.']);
         }
 
+        // Only the operator actually serving this number may repeat it, so a
+        // staffer cannot spoof announcements for another window's patient.
+        if (! $isSuperadmin) {
+            $serving = DB::table('queue')
+                ->where('department_id', $departmentId)
+                ->where('served_by', $servedBy)
+                ->where('queue_number', $queueNumber)
+                ->where('status', 'serving')
+                ->exists();
+            if (! $serving) {
+                return response()->json(['success' => false, 'message' => 'Only the serving operator can repeat this call.']);
+            }
+        }
+
         $emit->emit('repeat-call', [
+            'dept' => $departmentId,
             'department_id' => $departmentId,
             'department_name' => $departmentName,
             'queue_number' => $queueNumber,

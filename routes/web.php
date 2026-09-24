@@ -26,10 +26,27 @@ use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\WaitingQueueController;
 use App\Services\EmitService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
+Route::get('up', function () {
+    // Dependency-free health probe. Overrides the framework's default /up
+    // view (which pulls fonts.bunny.net + a jsdelivr Tailwind CDN build) so
+    // monitoring never depends on third-party CDNs and no cross-domain
+    // scripts are served. DB failure reports 503 without leaking details.
+    try {
+        DB::connection()->getPdo();
+
+        return response()->json(['status' => 'ok']);
+    } catch (Throwable $e) {
+        report($e);
+
+        return response()->json(['status' => 'degraded'], 503);
+    }
+});
+
 Route::get('login.php', [LoginController::class, 'show'])->name('login.show');
-Route::post('login.php', [LoginController::class, 'login'])->name('login.submit');
+Route::post('login.php', [LoginController::class, 'login'])->middleware('throttle:login')->name('login.submit');
 
 // The native endpoints keep their exact URL paths so the ported JS works unchanged.
 
@@ -52,9 +69,9 @@ Route::get('live.php', [LiveMonitorController::class, 'show']);
 // Public ticket kiosks (anonymous ticket machines; single-login only enforced
 // when an operator session happens to exist). GET renders, POST issues.
 Route::get('waiting_queue.php', [WaitingQueueController::class, 'show']);
-Route::post('waiting_queue.php', [WaitingQueueController::class, 'issue']);
+Route::post('waiting_queue.php', [WaitingQueueController::class, 'issue'])->middleware('throttle:kiosk-issue');
 Route::get('abtc_queue.php', [AbtcQueueController::class, 'show']);
-Route::post('abtc_queue.php', [AbtcQueueController::class, 'issue']);
+Route::post('abtc_queue.php', [AbtcQueueController::class, 'issue'])->middleware('throttle:kiosk-issue');
 
 // Printable ticket page + retired generic issuance page (410 Gone).
 Route::get('ticket_others.php', [TicketOthersController::class, 'show']);
@@ -101,6 +118,7 @@ Route::middleware('single.login')->group(function (): void {
     Route::get('index.php', [QueueController::class, 'index']);
     Route::get('get_queue.php', [QueueController::class, 'getQueue']);
     Route::post('serve_next.php', [QueueController::class, 'serveNext']);
+    Route::post('serve_random.php', [QueueController::class, 'serveRandom']);
     Route::post('finish.php', [QueueController::class, 'finish']);
     Route::post('queue_action.php', [QueueController::class, 'queueAction']);
     Route::post('repeat_call.php', [QueueController::class, 'repeatCall']);
@@ -109,7 +127,7 @@ Route::middleware('single.login')->group(function (): void {
     Route::post('transfer_queue.php', [TransferController::class, 'transfer']);
     Route::post('prioritize_queue.php', [TransferController::class, 'prioritize']);
     Route::post('switch_department.php', [DepartmentController::class, 'switch']);
-    Route::post('update_password.php', [AccountController::class, 'updatePassword']);
+    Route::post('update_password.php', [AccountController::class, 'updatePassword'])->middleware('throttle:password-update');
     Route::get('get_pool_waiting.php', [PoolController::class, 'getWaiting']);
     Route::post('serve_pool.php', [PoolController::class, 'serve']);
 

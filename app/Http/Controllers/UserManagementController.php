@@ -53,6 +53,11 @@ class UserManagementController extends Controller
                 return redirect('login.php');
             }
 
+            $newUsername = trim((string) $request->input('username', ''));
+            if ($newUsername === '' || $this->usernameTaken($newUsername)) {
+                return redirect('user_management.php?error=duplicate');
+            }
+
             $data = [
                 trim((string) $request->input('username', '')),
                 password_hash('12345', PASSWORD_DEFAULT),
@@ -84,8 +89,10 @@ class UserManagementController extends Controller
         if ($usertype !== 'admin' && $id !== $userId) {
             abort(403, 'Access denied.');
         }
-
         $username = trim((string) $request->input('username', ''));
+        if ($username === '' || $this->usernameTaken($username, $id)) {
+            return redirect('user_management.php?error=duplicate');
+        }
         $usertypeNew = (string) $request->input('usertype', 'regular');
         $firstname = trim((string) $request->input('firstname', ''));
         $middlename = trim((string) $request->input('middlename', ''));
@@ -131,5 +138,19 @@ class UserManagementController extends Controller
         }
 
         return redirect('user_management.php?edited=1');
+    }
+
+    /**
+     * Case-insensitive username check (login matches case-insensitively under
+     * the database collation, so duplicates would make logins ambiguous).
+     */
+    private function usernameTaken(string $username, ?int $exceptUserId = null): bool
+    {
+        $query = DB::table('users')->whereRaw('LOWER(username) = ?', [strtolower($username)]);
+        if ($exceptUserId !== null && $exceptUserId > 0) {
+            $query->where('user_id', '!=', $exceptUserId);
+        }
+
+        return $query->exists();
     }
 }

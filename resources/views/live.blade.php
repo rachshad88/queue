@@ -7,7 +7,6 @@
   @inlineCss('dist/assets/module-CdqakSoB.css')
   @inlineCss('css/fontawesome/css/all.min.css')
   @inlineCss('css/rhu-uniform.css')
-  <script type="module" src="/dist/assets/live-D1tVJTnW.js"></script>
   <style>
     #audio-hint{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);z-index:999;background:rgba(0,0,0,.78);color:#fff;padding:8px 18px;border-radius:999px;font-size:14px;letter-spacing:.02em;box-shadow:0 2px 10px rgba(0,0,0,.4);cursor:pointer;pointer-events:none}
     #audio-hint.audio-hint-hidden{display:none}
@@ -49,6 +48,24 @@
   <aside id="wait-rail" data-open="0"><div class="wait-rail-head"><h4>Waiting List</h4><span id="wait-rail-count">0</span></div><div id="wait-rail-list"></div></aside>
   <div id="audio-hint" title="Tap or press OK once so the browser will play call sounds"><i class="fa-solid fa-volume-high"></i>Press OK / tap to enable sound</div>
   <script>window._QUEUE_SOCKET_HOST=window.location.origin;</script>
-  <script src="/js/socket.io.min.js"></script><script src="/js/query-cache.js?v=20260910a"></script><script src="/js/voice-parts.js?v=20260910a"></script><script src="/js/tts-fallback.js?v=20260910a"></script><script src="/js/live.js?v=20260926a" defer></script>
+  @php
+    $reverbLiveHost = config('reverb.apps.apps.0.options.host');
+    $reverbLiveConfig = [
+        'key' => config('reverb.apps.apps.0.key'),
+        'host' => in_array($reverbLiveHost, ['localhost', '127.0.0.1', null], true) ? null : $reverbLiveHost,
+        'port' => (int) config('reverb.apps.apps.0.options.port', 8080),
+        'scheme' => config('reverb.apps.apps.0.options.scheme', 'http'),
+        'deptId' => null,
+        'csrfToken' => csrf_token(),
+    ];
+  @endphp
+  <script>
+    window._REVERB = @json($reverbLiveConfig);
+  </script>
+  <script src="/js/pusher.min.js" defer></script>
+  <script src="/js/echo.iife.js" defer></script>
+  <script src="/js/reverb.js?v=20260922a" defer></script>
+  <script src="/js/socket.io.min.js"></script><script src="/js/query-cache.js?v=20260910a"></script><script src="/js/voice-parts.js?v=20260910a"></script><script src="/js/tts-fallback.js?v=20260910a"></script><script src="/js/live.js?v=20260930a" defer></script>
+  <script src="/js/noinspect.js?v=20260922a" defer></script>
 </body>
 </html>

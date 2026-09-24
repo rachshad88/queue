@@ -13,7 +13,9 @@ class SingleLoginService
 {
     public function isExempt(string $usertype): bool
     {
-        return $usertype === 'admin' || $usertype === 'superadmin';
+        $normalized = strtolower(trim($usertype));
+
+        return $normalized === 'admin' || $normalized === 'superadmin';
     }
 
     public function clientIp(Request $request): string
@@ -113,5 +115,26 @@ class SingleLoginService
         $row = DB::table('users')->select('last_active')->where('user_id', $userId)->first();
 
         return $row?->last_active !== null ? (string) $row->last_active : null;
+    }
+
+    /**
+     * Minutes since the operator's last activity, measured entirely in the
+     * database against Manila wall-clock time. last_active is stored as Manila
+     * time while PHP's time() is server (UTC) time, so diffing in PHP would
+     * skew idle expiry by ~8 hours. Null when no activity is recorded.
+     */
+    public function idleMinutesFor(int $userId): ?int
+    {
+        $row = DB::selectOne(
+            'SELECT DATEDIFF(MINUTE, last_active, '.config('queue.manila_now').') AS idle_min
+              FROM users WHERE user_id = ?',
+            [$userId]
+        );
+
+        if (! $row || $row->idle_min === null) {
+            return null;
+        }
+
+        return (int) $row->idle_min;
     }
 }

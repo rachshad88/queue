@@ -41,13 +41,22 @@ test('account lifecycle: add user, default password, forced change, re-login', a
   ]);
   await expect(page.locator(`button.editBtn[data-username="${username}"]`)).toBeVisible();
 
-  // 2) New operator signs in with the default password; the app forces a change.
+  // 2) New operator signs in with the default password; the app forces a
+  //    change through its inline form (new + confirm fields, Save posts
+  //    update_password.php — no native prompt involved).
   await logout(page);
   await loginAs(page, username, '12345');
   const changeModal = page.locator('#changePwModal');
   await expect(changeModal).toBeVisible();
-  page.once('dialog', (dialog) => dialog.accept(newPassword));
-  await page.locator('#changeNowBtn').click();
+  page.on('dialog', (dialog) => dialog.accept());
+  await page.fill('#changePwNew', newPassword);
+  await page.fill('#changePwConfirm', newPassword);
+  await Promise.all([
+    page.waitForResponse(
+      (r) => r.url().includes('update_password.php') && r.request().method() === 'POST',
+    ),
+    page.locator('#changeNowBtn').click(),
+  ]);
   await expect(changeModal).toBeHidden();
 
   // 3) The new password is live.

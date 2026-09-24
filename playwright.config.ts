@@ -25,6 +25,7 @@ export default defineConfig({
   },
   projects: [
     { name: 'fullscan', testMatch: /(fullscan|no-css)\.spec\.ts/ },
+    { name: 'ui', testMatch: /tests\/e2e\/login\.spec\.ts$/ },
     ...(allowLive
       ? [{ name: 'regression', testMatch: /regression\/.*\.spec\.ts/ }]
       : []),

@@ -63,6 +63,8 @@ class EditAccountController extends Controller
         $error = null;
         if ($firstname === '' || $lastname === '' || $usernameNew === '') {
             $error = 'First name, Last name, and Username are required.';
+        } elseif (DB::table('users')->whereRaw('LOWER(username) = ?', [strtolower($usernameNew)])->where('user_id', '!=', $userId)->exists()) {
+            $error = 'That username is already taken. Please choose another.';
         } else {
             try {
                 DB::update(

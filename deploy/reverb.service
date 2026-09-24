@@ -1,0 +1,25 @@
+# systemd unit for the RHU Queue Reverb WebSocket server.
+# Install: sudo cp deploy/reverb.service /etc/systemd/system/reverb.service
+#          sudo systemctl daemon-reload && sudo systemctl enable --now reverb
+#
+# Reads the Laravel .env directly (REVERB_APP_* credentials), so no extra
+# EnvironmentFile is needed. Match User/Group to the php-fpm pool user.
+
+[Unit]
+Description=RHU Queue Reverb WebSocket server
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/home/user/queue-laravel
+ExecStart=/usr/bin/php artisan reverb:start --host=127.0.0.1 --port=8080
+Restart=always
+RestartSec=5
+# Reverb holds one persistent connection per browser tab; 500/app cap is set
+# via REVERB_APP_MAX_CONNECTIONS. Keep file headroom for sockets:
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target

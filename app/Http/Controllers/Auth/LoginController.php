@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Services\SingleLoginService;
 use App\Services\StationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 
 class LoginController extends Controller
@@ -21,6 +23,11 @@ class LoginController extends Controller
     {
         $username = trim((string) $request->input('username', ''));
         $password = (string) $request->input('password', '');
+        $attemptKey = $this->attemptKey($request, $username);
+
+        if (Cache::get($this->lockKey($attemptKey)) !== null) {
+            return $this->backWith($request, 'Too many login attempts. Please try again in 15 minutes.');
+        }
 
         $sql = 'SELECT u.user_id, u.username, u.password, u.usertype, u.department_id, u.status,
                        d.name AS department_name, d.status AS department_status
@@ -31,20 +38,25 @@ class LoginController extends Controller
         $row = DB::selectOne($sql, [$username]);
 
         if (! $row) {
-            return $this->backWith($request, 'Invalid username or password.');
+            return $this->failedAttempt($request, $username, $attemptKey, null);
         }
 
+        // Deliberately generic: distinct "deactivated" messages would let an
+        // attacker enumerate valid usernames and department states.
         if (isset($row->status) && strtolower((string) $row->status) === 'inactive') {
-            return $this->backWith($request, 'Your account has been deactivated. Please contact the administrator.');
+            return $this->failedAttempt($request, $username, $attemptKey, $row);
         }
 
         if (isset($row->department_status) && strtolower((string) $row->department_status) === 'inactive') {
-            return $this->backWith($request, 'Your department has been deactivated. Please contact the administrator.');
+            return $this->failedAttempt($request, $username, $attemptKey, $row);
         }
 
         if (! Hash::check($password, $row->password)) {
-            return $this->backWith($request, 'Invalid username or password.');
+            return $this->failedAttempt($request, $username, $attemptKey, $row);
         }
+
+        Cache::forget($this->attemptsKey($attemptKey));
+        Cache::forget($this->lockKey($attemptKey));
 
         $isSuperadmin = strtolower(trim((string) $row->usertype)) === 'superadmin';
 
@@ -59,9 +71,12 @@ class LoginController extends Controller
             'default_pw' => $password === '12345',
         ]);
 
+        // Fresh session id on every login (including admins/superadmins) so a
+        // pre-login session id can never be fixated into a privileged session.
+        $request->session()->regenerate(true);
+
         // Mint fresh token for non-exempt accounts (admins/superadmins keep multi-device access).
         if (! $singleLogin->isExempt((string) $row->usertype)) {
-            $request->session()->regenerate(true);
             $token = bin2hex(random_bytes(32));
             Session::put('login_token', $token);
             $singleLogin->registerLoginToken((int) $row->user_id, $token);
@@ -96,5 +111,38 @@ class LoginController extends Controller
             ->route('login.show')
             ->withInput($request->only('username'))
             ->with('error', $message);
+    }
+
+    private function attemptKey(Request $request, string $username): string
+    {
+        return trim((string) $request->ip()).'|'.strtolower(trim($username));
+    }
+
+    private function attemptsKey(string $key): string
+    {
+        return "login:attempts:$key";
+    }
+
+    private function lockKey(string $key): string
+    {
+        return "login:lock:$key";
+    }
+
+    private function failedAttempt(Request $request, string $username, string $attemptKey, ?object $row)
+    {
+        $attempts = (int) Cache::get($this->attemptsKey($attemptKey), 0) + 1;
+        Cache::put($this->attemptsKey($attemptKey), $attempts, now()->addMinutes(15));
+
+        if ($attempts >= 5) {
+            Cache::put($this->lockKey($attemptKey), time(), now()->addMinutes(15));
+        }
+
+        Log::warning('auth.failed', [
+            'ip' => trim((string) $request->ip()),
+            'username' => $username,
+            'user_exists' => $row !== null,
+        ]);
+
+        return $this->backWith($request, 'Invalid username or password.');
     }
 }

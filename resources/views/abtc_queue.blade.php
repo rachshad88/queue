@@ -6,9 +6,9 @@
     <title>ABTC Queue</title>
     @inlineCss('dist/assets/module-CdqakSoB.css')
     @inlineCss('css/rhu-uniform.css')
-    <script type="module" src="/dist/assets/app-D1tVJTnW.js"></script>
 </head>
-<body class="min-h-screen bg-gray-100 flex items-center justify-center p-5">
+<body class="min-h-screen bg-gray-100 flex items-center justify-center p-5 page-kiosk">
+    <x-hospital-background />
     @if ($isLoggedIn)
     <div id="sidebar-container"></div>
     @endif
@@ -36,7 +36,8 @@
     </div>
 
     @if ($isLoggedIn)
-    <script src="/js/sidebar.js?v=20260917c" defer></script>
+    <script src="/js/sidebar.js?v=20260923a" defer></script>
     @endif
+  <script src="/js/noinspect.js?v=20260922a" defer></script>
 </body>
 </html>

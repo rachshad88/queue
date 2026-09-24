@@ -5,6 +5,9 @@ return [
     // Manila offset used for all "now" stamps (server TZ is UTC).
     'manila_now' => "CONVERT(datetime, SWITCHOFFSET(SYSDATETIMEOFFSET(), '+08:00'))",
 
+    // Manila calendar day, used to scope live queue fetches to today's tickets.
+    'manila_today' => "CAST(SWITCHOFFSET(SYSDATETIMEOFFSET(), '+08:00') AS DATE)",
+
     // Single-device login: a regular account is considered "active" until its
     // last_active marker is older than this many minutes (mirrors 1h idle logout).
     'single_login_ttl_min' => 60,

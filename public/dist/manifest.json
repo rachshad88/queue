@@ -1,0 +1,17 @@
+{
+  "resources/css/app.css": {
+    "file": "assets/module-CdqakSoB.css",
+    "name": "app",
+    "names": [
+      "app.css"
+    ],
+    "src": "resources/css/app.css",
+    "isEntry": true
+  },
+  "resources/js/alpine.js": {
+    "file": "assets/rhu-alpine.D-UBER0k.js",
+    "name": "alpine",
+    "src": "resources/js/alpine.js",
+    "isEntry": true
+  }
+}

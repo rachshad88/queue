@@ -104,6 +104,10 @@ class DisplayController extends Controller
                 continue;
             }
 
+            // Manila calendar day (not the server-UTC day): the live wall must
+            // agree with the rest of the queue on what "today" means.
+            $manilaToday = config('queue.manila_today');
+
             $entry = [
                 'id' => (int) $dept->id,
                 'name' => (string) $dept->name,
@@ -112,6 +116,11 @@ class DisplayController extends Controller
                 'is_sectioned' => $stations->sectionsTableForDept((int) $dept->id, (string) $dept->name) !== null,
                 'serving' => [],
                 'waiting' => [],
+                'waiting_total' => (int) DB::table('queue')
+                    ->where('department_id', $deptId)
+                    ->where('status', 'waiting')
+                    ->whereRaw('created_at >= '.$manilaToday)
+                    ->count(),
             ];
 
             if ($entry['is_sectioned']) {
@@ -133,7 +142,7 @@ class DisplayController extends Controller
                     if (! empty($s->occupied_by)) {
                         $q = DB::selectOne(
                             "SELECT TOP 1 queue_number, category FROM queue
-                             WHERE department_id = ? AND served_by = ? AND status = 'serving' ORDER BY created_at ASC",
+                              WHERE department_id = ? AND served_by = ? AND status = 'serving' AND created_at >= {$manilaToday} ORDER BY created_at ASC",
                             [$deptId, (int) $s->occupied_by]
                         );
                         if ($q) {
@@ -144,11 +153,14 @@ class DisplayController extends Controller
                     $entry['serving'][] = $item;
                 }
             } else {
+                // Current serving rows for the dept (matches get_display_data.php:
+                // "who is the doctor seeing now"). No 45-min served_at window -- a
+                // long consultation (or a stale row) must never make the wall go
+                // idle while status is still 'serving'.
                 $live = DB::select(
-                    'SELECT TOP 4 queue_number, category FROM queue
-                     WHERE department_id = ? AND status = \'serving\'
-                       AND served_at IS NOT NULL AND served_at >= DATEADD(MINUTE,-45,'.config('queue.manila_now').')
-                     ORDER BY served_at DESC',
+                    "SELECT TOP 4 queue_number, category FROM queue
+                      WHERE department_id = ? AND status = 'serving' AND created_at >= {$manilaToday}
+                      ORDER BY served_at DESC",
                     [$deptId]
                 );
                 foreach ($live as $q) {
@@ -159,10 +171,11 @@ class DisplayController extends Controller
                 }
             }
 
+            // Today's records only: the live wall shows no cross-day backlog.
             $waits = DB::select(
-                'SELECT TOP 25 id, queue_number, category FROM queue
-                 WHERE department_id = ? AND status = \'waiting\'
-                 ORDER BY CASE category WHEN \'emergency\' THEN 0 WHEN \'priority\' THEN 1 ELSE 2 END, created_at ASC',
+                "SELECT TOP 10 id, queue_number, status, category FROM queue
+                  WHERE department_id = ? AND status = 'waiting' AND created_at >= {$manilaToday}
+                  ORDER BY CASE category WHEN 'emergency' THEN 0 WHEN 'priority' THEN 1 ELSE 2 END, created_at ASC",
                 [$deptId]
             );
             foreach ($waits as $w) {

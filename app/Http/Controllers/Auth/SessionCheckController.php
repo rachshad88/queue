@@ -30,14 +30,9 @@ class SessionCheckController extends Controller
 
         // Idle expiry: only meaningful for unstamped ticks (activity=0) of non-exempt accounts.
         if (! $activity && ! $singleLogin->isExempt($usertype)) {
-            $lastActive = $singleLogin->lastActiveFor($userId);
-            if ($lastActive !== null) {
-                $ts = strtotime($lastActive);
-                $idleMin = (int) config('queue.idle_expiry_min');
-
-                if ($ts !== false && (time() - $ts) > $idleMin * 60) {
-                    return response()->json(['ok' => false, 'logged_in' => false, 'reason' => 'inactive']);
-                }
+            $idleMin = $singleLogin->idleMinutesFor($userId);
+            if ($idleMin !== null && $idleMin > (int) config('queue.idle_expiry_min')) {
+                return response()->json(['ok' => false, 'logged_in' => false, 'reason' => 'inactive']);
             }
         }
 

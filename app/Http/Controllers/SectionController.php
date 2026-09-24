@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
 use App\Services\EmitService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,6 +21,12 @@ class SectionController extends Controller
     {
         $table = $waiting ? 'waiting_sections' : 'admission_sections';
         $dept = $waiting ? (int) config('queue.waiting_dept_id') : (int) config('queue.admission_dept_id');
+
+        // Window rosters expose staff names: staff may only view their own
+        // department's chooser (superadmins may view both).
+        if (empty(Session::get('is_superadmin', false)) && (int) Session::get('department_id', 0) !== $dept) {
+            return redirect('index.php');
+        }
 
         $sections = DB::select(
             "SELECT s.id, s.section_name, s.occupied_by,
@@ -168,33 +173,10 @@ class SectionController extends Controller
 
     public function control()
     {
-        $staff = User::query()
-            ->where('usertype', '<>', 'superadmin')
-            ->where(function ($q) {
-                $q->where('department_id', (int) config('queue.admission_dept_id'))
-                    ->orWhere('department_id', (int) config('queue.waiting_dept_id'));
-            })
-            ->get(['user_id', 'firstname', 'lastname', 'username', 'department_id'])
-            ->keyBy('user_id');
-
-        $data = ['admission' => [], 'waiting' => []];
-
-        foreach (['admission' => 'admission_sections', 'waiting' => 'waiting_sections'] as $key => $table) {
-            $data[$key] = DB::table($table)
-                ->orderBy('id')
-                ->get()
-                ->map(function ($s) use ($staff) {
-                    $s->occupant_name = null;
-                    if (! empty($s->occupied_by) && $staff->has($s->occupied_by)) {
-                        $u = $staff->get($s->occupied_by);
-                        $s->occupant_name = trim(($u->firstname ?? '').' '.($u->lastname ?? ''));
-                        $s->occupant_user = $u->username;
-                    }
-
-                    return $s;
-                });
+        if (empty(Session::get('is_superadmin', false))) {
+            return redirect('index.php');
         }
 
-        return view('sections.control', $data);
+        return view('sections.control');
     }
 }

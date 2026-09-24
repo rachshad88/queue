@@ -3,6 +3,7 @@
 use App\Http\Middleware\AcceptLegacyCsrfNames;
 use App\Http\Middleware\EnsureSingleLogin;
 use App\Http\Middleware\NormalizeBaseUrl;
+use App\Http\Middleware\ResolveOperatorForBroadcast;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -16,6 +17,14 @@ return Application::configure(basePath: dirname(__DIR__))
         web: __DIR__.'/../routes/web.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
+    )
+    // Reverb channel-auth endpoint (/broadcasting/auth). Session-based like
+    // the rest of the app (web middleware) + per-IP throttle. Attributes go
+    // through withBroadcasting (not Broadcast::routes in a provider) so the
+    // framework registers exactly one route with this middleware.
+    ->withBroadcasting(
+        __DIR__.'/../routes/channels.php',
+        ['middleware' => ['web', ResolveOperatorForBroadcast::class, 'throttle:60,1']],
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // CSRF sits in the WEB group, not global middleware: use replaceInGroup

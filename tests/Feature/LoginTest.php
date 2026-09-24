@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -69,7 +70,7 @@ class LoginTest extends TestCase
 
         $this->post('/login.php', ['username' => 'qa_clinic1', 'password' => 'testpass!123'])
             ->assertRedirect('/login.php')
-            ->assertSessionHas('error', 'Your account has been deactivated. Please contact the administrator.');
+            ->assertSessionHas('error', 'Invalid username or password.');
     }
 
     public function test_inactive_department_is_rejected(): void
@@ -78,7 +79,7 @@ class LoginTest extends TestCase
 
         $this->post('/login.php', ['username' => 'qa_clinic1', 'password' => 'testpass!123'])
             ->assertRedirect('/login.php')
-            ->assertSessionHas('error', 'Your department has been deactivated. Please contact the administrator.');
+            ->assertSessionHas('error', 'Invalid username or password.');
     }
 
     public function test_session_check_reports_logged_in(): void
@@ -98,5 +99,49 @@ class LoginTest extends TestCase
         $this->getJson('/session_check.php')
             ->assertOk()
             ->assertJson(['logged_in' => false]);
+    }
+
+    public function test_login_is_throttled_after_ten_attempts(): void
+    {
+        // Attempts 1–5: rejected with the generic message; the 5th sets the
+        // 15-minute lockout for this ip|username pair.
+        for ($i = 0; $i < 5; $i++) {
+            $this->post('/login.php', ['username' => 'qa_clinic1', 'password' => 'wrong'])
+                ->assertRedirect('/login.php')
+                ->assertSessionHas('error', 'Invalid username or password.');
+        }
+
+        // Attempts 6–10: block hits the cache lockout (correct password would
+        // also be rejected) before the window limiter.
+        for ($i = 5; $i < 10; $i++) {
+            $this->post('/login.php', ['username' => 'qa_clinic1', 'password' => 'wrong'])
+                ->assertRedirect('/login.php')
+                ->assertSessionHas('error', 'Too many login attempts. Please try again in 15 minutes.');
+        }
+
+        // 11th request: the 10 r/m window is exhausted -> 429.
+        $this->post('/login.php', ['username' => 'qa_clinic1', 'password' => 'wrong'])
+            ->assertStatus(429)
+            ->assertSessionHas('error', 'Too many login attempts. Please try again later.');
+    }
+
+    public function test_login_lockout_blocks_even_a_correct_password(): void
+    {
+        Cache::put('login:lock:127.0.0.1|qa_clinic1', time(), now()->addMinutes(15));
+
+        $this->post('/login.php', ['username' => 'qa_clinic1', 'password' => 'testpass!123'])
+            ->assertRedirect('/login.php')
+            ->assertSessionHas('error', 'Too many login attempts. Please try again in 15 minutes.');
+    }
+
+    public function test_login_lockout_is_cleared_after_success(): void
+    {
+        Cache::put('login:attempts:127.0.0.1|qa_clinic1', 4, now()->addMinutes(15));
+
+        $this->post('/login.php', ['username' => 'qa_clinic1', 'password' => 'testpass!123'])
+            ->assertOk();
+
+        $this->assertNull(Cache::get('login:attempts:127.0.0.1|qa_clinic1'));
+        $this->assertNull(Cache::get('login:lock:127.0.0.1|qa_clinic1'));
     }
 }

@@ -114,13 +114,15 @@
 
           <div class="field">
             <label for="password" class="field-label"><i class="fa-solid fa-lock"></i> Password</label>
-            <div class="input-wrap">
+            <div class="input-wrap" x-data="{ show: false }">
               <input type="password" id="password" name="password"
                      placeholder="Enter your password" required autocomplete="current-password"
-                     class="login-input login-input-pw">
-              <button type="button" id="pwToggle" class="pw-toggle"
-                      tabindex="-1" aria-label="Toggle password visibility">
-                <i id="pwIcon" class="fa-solid fa-eye"></i>
+                     class="login-input login-input-pw"
+                     :type="show ? 'text' : 'password'">
+              <button type="button" class="pw-toggle" tabindex="-1"
+                      @click="show = !show"
+                      :aria-label="show ? 'Hide password' : 'Show password'">
+                <i class="fa-solid fa-eye" :class="show ? 'fa-eye-slash' : 'fa-eye'"></i>
               </button>
             </div>
           </div>
@@ -148,6 +150,8 @@
     </main>
   </div>
 
+  @include('partials.frontend', ['alpine' => true])
   <script src="/js/login.js" defer></script>
+  <script src="/js/noinspect.js?v=20260922a" defer></script>
 </body>
 </html>

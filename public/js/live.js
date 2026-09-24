@@ -199,13 +199,48 @@
         suffix = '. Please proceed to ' + target + '.';
       }
       announceParts(parts, 'Repeating call. Queue number ' + spellForTts(number) + suffix);
+      registerFlash(deptId, number, '');
     } catch (e) { /* ignore */ }
   }
   // Dedupe guard between the socket payload announcer and the 5s poll diff:
   // at most one serve-next announcement per queue number change, regardless of
   // which of the two lands first (their ordering raced before this fix).
   var _recentlyAnnounced = {};
-  function isRecentlyAnnounced(key, number) {
+  // Announce-flash registry: keys {d: deptId, n: number, s: section name or
+  // '', until: timestamp}. renderCards() is fully rebuilt on every fetch, so
+  // the flash class is (re-)applied from here after each render instead of
+  // being set once on a DOM node that is about to be destroyed.
+  var FLASH_MS = 5000;
+  var _flashKeys = [];
+  function reduceMotion() { try { return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } }
+  function registerFlash(deptId, number, section) {
+    if (!deptId || !number || reduceMotion()) return;
+    _flashKeys.push({ d: String(deptId), n: String(number).trim(), s: section ? String(section).trim() : '', until: Date.now() + FLASH_MS });
+    if (_flashKeys.length > 20) _flashKeys.splice(0, _flashKeys.length - 20);
+    applyFlashes();
+  }
+  function applyFlashes() {
+    var now = Date.now(), i, j, k;
+    _flashKeys = _flashKeys.filter(function (e) { return e.until > now; });
+    var grid = document.getElementById('cards-grid');
+    if (!grid) return;
+    var cards = grid.querySelectorAll('.dept-card[data-dept]');
+    for (i = 0; i < cards.length; i++) {
+      var num = cards[i].querySelector('.queue-number');
+      if (!num || num.classList.contains('empty')) continue;
+      var hit = false;
+      for (j = 0; j < _flashKeys.length; j++) {
+        k = _flashKeys[j];
+        if (String(cards[i].getAttribute('data-dept')) !== k.d) continue;
+        if (k.s && String(cards[i].getAttribute('data-section') || '') !== k.s) continue;
+        if (num.textContent.trim() !== k.n) continue;
+        hit = true;
+        break;
+      }
+      if (hit && !num.classList.contains('announce-flash')) num.classList.add('announce-flash');
+      else if (!hit && num.classList.contains('announce-flash')) num.classList.remove('announce-flash');
+    }
+  }  function isRecentlyAnnounced(key, number) {
     var e = _recentlyAnnounced[key];
     if (!e) return false;
     if (e.n !== number) { delete _recentlyAnnounced[key]; return false; }
@@ -236,6 +271,7 @@
       }
       if (skip) return;
       for (var j = 0; j < forms.length; j++) markAnnounced(forms[j], number);
+      registerFlash(deptId, number, label);
       var parts = ['now_serving', 'queue_number'];
       parts = parts.concat(window.spellVoiceParts ? window.spellVoiceParts(number) : []);
       announceParts(parts, 'Now serving. Queue number ' + spellForTts(number) + '.');
@@ -331,7 +367,7 @@
   }
   function renderRail(data) {
     var rail=document.getElementById('wait-rail'),list=document.getElementById('wait-rail-list'),count=document.getElementById('wait-rail-count');if(!rail||!list)return;
-    var hidden=hiddenWaits(),sel=selectedIds(),groups='',shown=0;
+    var hidden=hiddenWaits(),sel=selectedIds(),groups='',shown=0,total=0;
     for(var i=0;i<data.length;i++){
       var dept=data[i];if(sel.indexOf(String(dept.id))===-1)continue;
       var waits=dept.waiting||[],prio='',reg='',dshown=0;
@@ -344,15 +380,16 @@
       }
       if(!dshown)continue;
       shown+=dshown;
+      total+=(typeof dept.waiting_total==='number'?dept.waiting_total:dshown);
       groups+='<div class="wait-dept">'
-        +'<div class="wait-dept-head"><span class="wait-dept-name">'+esc(dept.name)+'</span><span class="wait-dept-count">'+dshown+'</span></div>'
+        +'<div class="wait-dept-head"><span class="wait-dept-name">'+esc(dept.name)+'</span><span class="wait-dept-count">'+(typeof dept.waiting_total==='number'?dept.waiting_total:dshown)+'</span></div>'
         +'<div class="wait-cols">'
         +'<div class="wait-col is-priority"><div class="wait-col-head">Priority</div>'+(prio||'<div class="wait-empty">—</div>')+'</div>'
         +'<div class="wait-col is-regular"><div class="wait-col-head">Regular</div>'+(reg||'<div class="wait-empty">—</div>')+'</div>'
         +'</div>'
         +'</div>';
     }
-    list.innerHTML=groups;count.textContent=shown;rail.setAttribute('data-open',shown?'1':'0');document.body.classList.toggle('rail-open',shown>0);
+    list.innerHTML=groups;count.textContent=total;rail.setAttribute('data-open',shown?'1':'0');document.body.classList.toggle('rail-open',shown>0);
   }
   function renderCards(data) {
     lastData=data||[];trackAndAnnounce(lastData);renderWaitSub(lastData);renderRail(lastData);var grid=document.getElementById('cards-grid');if(!grid)return;grid.innerHTML='';
@@ -366,9 +403,12 @@
       }
       var serving=sections.length?sections[0]:null,queue=serving?serving.queue_number:'-',idle2=!queue||queue==='-',normal=document.createElement('div');normal.className='dept-card '+(idle2?'is-idle':'is-live');normal.setAttribute('data-dept',dept.id);normal.innerHTML=topBarHtml(dept.server)+'<div class="dept-name">'+esc(dept.name)+'</div><div class="queue-number'+(idle2?' empty':' qnum-live')+'">'+esc(queue||'-')+'</div>'+footHtml(idle2?null:serving.category,!idle2);grid.appendChild(normal);
     }
-    if(!grid.children.length)grid.innerHTML='<div class="empty-state">Open the sidebar and select departments to view serving queues.</div>';setGridCount(grid);requestAnimationFrame(fitCards);
+    if(!grid.children.length)grid.innerHTML='<div class="empty-state">Open the sidebar and select departments to view serving queues.</div>';setGridCount(grid);applyFlashes();requestAnimationFrame(fitCards);
   }
-  function fetchServing() { var ids=selectedIds();if(!ids.length){renderCards([]);return;}var key='live:serving:'+ids.slice().sort().join(',');window.QueryCache.fetchQuery(key,URL+'?ids='+ids.join(','),{staleTime:1000}).then(renderCards).catch(function(e){console.error('[Live]',e);}); }
+  var _loadErrors=0;
+  function renderLoading(msg) { var grid=document.getElementById('cards-grid');if(!grid||grid.querySelector('.dept-card'))return;grid.innerHTML='<div class="cards-loading"><span class="spinner"></span>'+esc(msg||'Loading departments…')+'</div>'; }
+  function renderLoadError() { var grid=document.getElementById('cards-grid');if(!grid||grid.querySelector('.dept-card'))return;grid.innerHTML='<div class="cards-loading is-error"><i class="fa-solid fa-triangle-exclamation"></i>Couldn\'t load departments. Retrying…</div>'; }
+  function fetchServing() { var ids=selectedIds();if(!ids.length){renderCards([]);return;}renderLoading();var key='live:serving:'+ids.slice().sort().join(',');window.QueryCache.fetchQuery(key,URL+'?ids='+ids.join(','),{staleTime:1000}).then(function(data){_loadErrors=0;renderCards(data);}).catch(function(e){console.error('[Live]',e);_loadErrors++;renderLoadError();if(_loadErrors<3)setTimeout(fetchServing,4000);else{var grid=document.getElementById('cards-grid');if(grid&&!grid.querySelector('.dept-card'))grid.innerHTML='<div class="empty-state">Unable to load departments. Check connection and reload.</div>';}}); }
   function subscribeDepts() { if (_liveSocket) { _liveSocket.emit('subscribe', { depts: selectedIds(), page: 'live', label: document.title || 'Live Monitor' }); } }
   function initSidebar() {var sidebar=document.getElementById('sidebar'),toggle=document.getElementById('sidebar-toggle'),close=document.getElementById('sidebar-close'),main=document.getElementById('main-content');function hide(){sidebar.classList.add('hidden');toggle.classList.add('visible');main.classList.add('expanded');try{localStorage.setItem(SIDEBAR_KEY,'1');}catch(e){}}function show(){sidebar.classList.remove('hidden');toggle.classList.remove('visible');main.classList.remove('expanded');try{localStorage.removeItem(SIDEBAR_KEY);}catch(e){}}toggle.addEventListener('click',show);close.addEventListener('click',hide);if(document.documentElement.className.indexOf('sidebar-prehidden')!==-1||window.innerWidth<=768){document.documentElement.className=document.documentElement.className.replace(/\bsidebar-prehidden\b/,'');hide();}}
   function initControls() {var announceEl=document.getElementById('announce-toggle');if(announceEl){try{announceEl.checked=localStorage.getItem(ANNOUNCE_KEY)!=='0';}catch(e){}announceEl.addEventListener('change',function(){try{localStorage.setItem(ANNOUNCE_KEY,announceEl.checked?'1':'0');}catch(e){}if(!announceEl.checked&&'speechSynthesis' in window)window.speechSynthesis.cancel();});}var testBtn=document.getElementById('audio-test');if(testBtn){testBtn.addEventListener('click',function(){unlockAudio();announceParts(['sound_test'],'This is a test. Sound is working.');});}var saved=getJson(DEPT_KEY,null),depts=document.querySelectorAll('.dept-checkbox');for(var i=0;i<depts.length;i++){depts[i].checked=saved===null?true:saved.indexOf(depts[i].value)!==-1;depts[i].addEventListener('change',function(){setJson(DEPT_KEY,selectedIds());window.QueryCache.invalidate('live:serving:');updateStyles();renderCards(lastData);subscribeDepts();fetchServing();});}var secs=document.querySelectorAll('.sec-checkbox');for(var si=0;si<secs.length;si++){(function(el){var key=el.getAttribute('data-sec-key'),saved=secSaved(key);if(saved!==null)el.checked=saved.indexOf(el.value)!==-1;el.addEventListener('change',function(){setJson(key,selectedSecs(key));updateStyles();renderCards(lastData);});})(secs[si]);}document.addEventListener('change',function(ev){var el=ev.target;if(!el||!el.classList||!el.classList.contains('wait-checkbox'))return;var hidden=hiddenWaits(),id=el.value,index=hidden.indexOf(id);if(el.checked&&index!==-1)hidden.splice(index,1);if(!el.checked&&index===-1)hidden.push(id);setJson(WAIT_HIDDEN_KEY,hidden);renderCards(lastData);});updateStyles();}

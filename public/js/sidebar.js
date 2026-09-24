@@ -27,17 +27,18 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    // --- Solid persistent highlight on nav links ---
+    // --- Solid persistent highlight on nav links (sb2 theme class) ---
     const SOLID_KEY = "sidebar-active-link";
+    const ACTIVE_CLASS = "sb2-active";
     const path = (window.location.pathname || "").split("/").filter(Boolean).pop() || "";
 
     function applySolidActive(link) {
       sidebar.querySelectorAll(".sidebar-link").forEach(a => {
-        a.classList.remove("sidebar-link-active");
+        a.classList.remove(ACTIVE_CLASS);
         a.removeAttribute("aria-current");
       });
       if (link) {
-        link.classList.add("sidebar-link-active");
+        link.classList.add(ACTIVE_CLASS);
         link.setAttribute("aria-current", "page");
       }
     }
@@ -59,8 +60,27 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!activeLink && path) activeLink = linkForHref(path);
     applySolidActive(activeLink);
 
+    // --- Collapsed desktop mode (persisted; sidebar re-renders per page) ---
+    const COLLAPSE_KEY = "sb2-collapsed";
+    const collapseBtn = document.getElementById("sb2-collapse");
+    function setCollapsed(on) {
+      document.body.classList.toggle("sb2-collapsed", on);
+      try { localStorage.setItem(COLLAPSE_KEY, on ? "1" : "0"); } catch (e) {}
+      if (collapseBtn) {
+        collapseBtn.setAttribute("aria-label", on ? "Expand sidebar" : "Collapse sidebar");
+        collapseBtn.setAttribute("title", on ? "Expand sidebar" : "Collapse sidebar");
+      }
+    }
+    let collapsed = false;
+    try { collapsed = localStorage.getItem(COLLAPSE_KEY) === "1"; } catch (e) {}
+    setCollapsed(collapsed);
+    if (collapseBtn) {
+      collapseBtn.addEventListener("click", () => setCollapsed(!document.body.classList.contains("sb2-collapsed")));
+    }
+
     // --- Mobile drawer ---
     const showBtn = document.getElementById("show-sidebar");
+    let closeDrawer = null;
     if (showBtn && sidebar) {
       let backdrop = document.querySelector(".sidebar-backdrop");
       if (!backdrop) {
@@ -72,15 +92,26 @@ document.addEventListener("DOMContentLoaded", async () => {
       const close = () => {
         sidebar.classList.remove("open");
         backdrop.classList.remove("active");
-        showBtn.style.display = "flex";
+        showBtn.style.display = "";
+        showBtn.setAttribute("aria-expanded", "false");
       };
+      closeDrawer = close;
 
+      showBtn.setAttribute("aria-expanded", "false");
       showBtn.addEventListener("click", () => {
         sidebar.classList.add("open");
         backdrop.classList.add("active");
         showBtn.style.display = "none";
+        showBtn.setAttribute("aria-expanded", "true");
       });
       backdrop.addEventListener("click", close);
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && sidebar.classList.contains("open")) close();
+      });
+
+      const closeBtn = document.getElementById("sb2-close");
+      if (closeBtn) closeBtn.addEventListener("click", close);
     }
 
     // --- Nav link click: instant solid highlight that survives reload ---
@@ -92,7 +123,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         applySolidActive(link);
         sessionStorage.setItem(SOLID_KEY, link.getAttribute("href").split("?")[0].split("/").pop());
         // If the mobile drawer is open, close it (the page will navigate anyway)
-        if (typeof close === "function") close();
+        if (typeof closeDrawer === "function") closeDrawer();
       });
     }
 
@@ -113,6 +144,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (changeBtn && changeForm) {
       changeBtn.addEventListener('click', () => {
+        // The inline form is hidden while collapsed: expand first.
+        if (document.body.classList.contains('sb2-collapsed') && typeof setCollapsed === 'function') {
+          setCollapsed(false);
+        }
         const open = changeForm.classList.toggle('hidden');
         changeBtn.setAttribute('aria-expanded', String(!open));
       });

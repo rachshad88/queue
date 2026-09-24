@@ -72,6 +72,7 @@ class PoolService
              FROM queue q
              JOIN departments d ON d.id = q.department_id
              WHERE q.department_id IN ({$in}) AND q.status = 'waiting'
+               AND q.created_at >= ".config('queue.manila_today')."
              ORDER BY CASE q.category WHEN 'emergency' THEN 0 WHEN 'priority' THEN 1 ELSE 2 END, q.created_at ASC"
         );
     }
@@ -82,6 +83,7 @@ class PoolService
         return (int) DB::table('queue')
             ->where('department_id', $myDept)
             ->where('status', 'waiting')
+            ->whereRaw('created_at >= '.config('queue.manila_today'))
             ->count();
     }
 
@@ -99,7 +101,7 @@ class PoolService
         }
 
         $affected = DB::update(
-            'UPDATE queue SET department_id = ?, status = \'serving\', served_by = ?, served_at = '.config('queue.manila_now')."
+            'UPDATE queue SET department_id = ?, status = \'serving\', served_by = ?, served_at = '.config('queue.manila_now').', transferred_at = '.config('queue.manila_now')."
              WHERE id = ? AND department_id = ? AND status = 'waiting'
                AND NOT EXISTS (SELECT 1 FROM queue q2 WHERE q2.department_id = ? AND q2.served_by = ? AND q2.status = 'serving')",
             [$myDept, $userId, $queueId, $otherDept, $myDept, $userId]
