@@ -1,5 +1,5 @@
 <section
-    class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+    class="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm"
     aria-label="Queue list">
 
     {{-- Card header -------------------------------------------------------- --}}
@@ -8,7 +8,7 @@
             <span class="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-blue-100 text-blue-600" aria-hidden="true">
                 <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg>
             </span>
-            <h2 class="m-0 text-[15px] font-extrabold tracking-tight text-slate-900">Queue List</h2>
+            <h2 class="m-0 text-[15px] font-extrabold tracking-tight text-slate-800">Queue List</h2>
             <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-0.5 text-xs font-bold tabular-nums text-blue-700">
                 @if ($totalRecords === 0)
                     0 entries
@@ -24,7 +24,7 @@
                         class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-blue-200 bg-white px-3 text-xs font-bold text-blue-600 transition-colors hover:border-blue-300 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1">
                     <svg class="h-[15px] w-[15px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
                     Export
-                    <svg class="h-3 w-3 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                    <svg class="h-3 w-3 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
                 </button>
                 <ul class="sh-menulist" data-sh-menu-list hidden role="menu" aria-label="Export options">
                     <li><a class="sh-menuitem" role="menuitem" href="{{ $exportAllUrl }}">
@@ -38,7 +38,7 @@
                     </li>
                 </ul>
             </div>
-            <button type="button" class="sh-refresh inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-blue-600 transition-colors hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1" aria-label="Refresh queue list">
+            <button type="button" class="sh-refresh inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 bg-white text-blue-600 transition-colors hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1" aria-label="Refresh queue list">
                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
             </button>
         </div>
@@ -82,7 +82,7 @@
                             @if ($sortKey === $key) aria-sort="{{ $sortDir === 'asc' ? 'ascending' : 'descending' }}" @endif
                             class="px-4 py-3">
                             <button type="button" wire:click="sortBy('{{ $key }}')"
-                                    class="group inline-flex items-center gap-1 rounded text-xs font-semibold uppercase tracking-wider {{ $sortKey === $key ? 'text-blue-600' : 'text-slate-500' }} hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+                                    class="group inline-flex items-center gap-1 rounded text-xs font-semibold uppercase tracking-wider {{ $sortKey === $key ? 'text-white' : 'text-slate-500' }} {{ $sortKey === $key ? '' : 'hover:text-white' }} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
                                 {{ $label }}
                                 @if ($sortKey === $key)
                                     @if ($sortDir === 'asc')
@@ -91,7 +91,7 @@
                                         <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
                                     @endif
                                 @else
-                                    <svg class="h-3 w-3 text-slate-400 group-hover:text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg>
+                                    <svg class="h-3 w-3 text-slate-300 group-hover:text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg>
                                 @endif
                             </button>
                         </th>
@@ -132,7 +132,7 @@
                                 </span>
                                 <div class="min-w-0 leading-tight">
                                     <div class="truncate text-[13px] font-medium text-slate-800">{{ $row->server_name ?? 'Unassigned' }}</div>
-                                    <div class="text-[11px] text-slate-400">Staff{{ $row->server_id ? ' #'.$row->server_id : '' }}</div>
+                                    <div class="text-[11px] text-slate-600">Staff{{ $row->server_id ? ' #'.$row->server_id : '' }}</div>
                                 </div>
                             </div>
                         </td>
@@ -148,14 +148,14 @@
                         <td class="{{ $cellClass }}"><x-status-badge :status="$row->status" /></td>
                         <td class="{{ $cellClass }}">
                             <div class="whitespace-nowrap text-[13px] font-medium tabular-nums text-slate-700">{{ $rowDt->format('M j, Y') }}</div>
-                            <div class="whitespace-nowrap text-xs tabular-nums text-slate-400">{{ $rowDt->format('g:i A') }}</div>
+                            <div class="whitespace-nowrap text-xs tabular-nums text-slate-600">{{ $rowDt->format('g:i A') }}</div>
                         </td>
                         <td class="{{ $cellClass }}">
                             <div class="flex justify-end">
                                 <div class="relative inline-block" data-sh-menu>
                                     <button type="button" data-sh-menu-btn aria-haspopup="menu" aria-expanded="false"
                                             aria-label="Row actions for {{ $row->queue_number }}"
-                                            class="flex h-8 w-8 items-center justify-center rounded-lg border-0 bg-transparent text-slate-500 transition-colors hover:bg-blue-50 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+                                            class="flex h-8 w-8 items-center justify-center rounded-lg border-0 bg-transparent text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
                                         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
                                     </button>
                                     <div class="sh-menulist" data-sh-menu-list hidden role="menu">
@@ -185,7 +185,7 @@
                                 </span>
                                 @if ($this->hasActiveFilters())
                                     <p class="text-sm font-medium text-slate-600">No serve records found for the current filters.</p>
-                                    <a href="server_history.php" class="mt-3 inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+                                    <a href="server_history.php" class="mt-3 inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
                                         <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
                                         Clear filters
                                     </a>
@@ -218,11 +218,11 @@
 
     {{-- Pagination ---------------------------------------------------------- --}}
     <div class="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <span class="text-[13px] text-slate-500">
+        <span class="text-[13px] text-slate-600">
             @if ($totalRecords === 0)
                 No serve records found.
             @else
-                Showing <strong class="font-semibold text-slate-900">{{ $shownFrom }}</strong> to <strong class="font-semibold text-slate-900">{{ $shownTo }}</strong> of <strong class="font-semibold text-slate-900">{{ $totalRecords }}</strong> entries
+                Showing <strong class="font-semibold text-slate-800">{{ $shownFrom }}</strong> to <strong class="font-semibold text-slate-800">{{ $shownTo }}</strong> of <strong class="font-semibold text-slate-800">{{ $totalRecords }}</strong> entries
             @endif
         </span>
 
@@ -232,7 +232,7 @@
                     @if ($prevPage !== null)
                         <li>
                             <button type="button" wire:click="gotoPage({{ $prevPage }})" aria-label="Previous page"
-                                    class="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+                                    class="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
                                 <span class="sr-only">Previous</span>
                                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 19-7-7 7-7"/></svg>
                             </button>
@@ -244,13 +244,13 @@
                     @if ($pgStart > 2)
                         <li>
                             <button type="button" wire:click="gotoPage(1)" aria-label="Go to page 1"
-                                    class="flex h-9 min-w-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-[13px] font-medium text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">1</button>
+                                    class="flex h-9 min-w-9 items-center justify-center rounded-lg border border-slate-300 bg-white px-3 text-[13px] font-medium text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">1</button>
                         </li>
-                        <li aria-hidden="true"><span class="flex h-9 min-w-4 items-center justify-center text-slate-400">&hellip;</span></li>
+                        <li aria-hidden="true"><span class="flex h-9 min-w-4 items-center justify-center text-slate-600">&hellip;</span></li>
                     @elseif ($pgStart === 2)
                         <li>
                             <button type="button" wire:click="gotoPage(1)" aria-label="Go to page 1"
-                                    class="flex h-9 min-w-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-[13px] font-medium text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">1</button>
+                                    class="flex h-9 min-w-9 items-center justify-center rounded-lg border border-slate-300 bg-white px-3 text-[13px] font-medium text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">1</button>
                         </li>
                     @endif
 
@@ -260,28 +260,28 @@
                                 <span aria-current="page" class="flex h-9 min-w-9 items-center justify-center rounded-lg bg-blue-600 px-3 text-[13px] font-semibold text-white">{{ $pgNum }}</span>
                             @else
                                 <button type="button" wire:click="gotoPage({{ $pgNum }})" aria-label="Go to page {{ $pgNum }}"
-                                        class="flex h-9 min-w-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-[13px] font-medium text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">{{ $pgNum }}</button>
+                                        class="flex h-9 min-w-9 items-center justify-center rounded-lg border border-slate-300 bg-white px-3 text-[13px] font-medium text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">{{ $pgNum }}</button>
                             @endif
                         </li>
                     @endfor
 
                     @if ($pgEnd < $totalPages - 1)
-                        <li aria-hidden="true"><span class="flex h-9 min-w-4 items-center justify-center text-slate-400">&hellip;</span></li>
+                        <li aria-hidden="true"><span class="flex h-9 min-w-4 items-center justify-center text-slate-600">&hellip;</span></li>
                         <li>
                             <button type="button" wire:click="gotoPage({{ $totalPages }})" aria-label="Go to page {{ $totalPages }}"
-                                    class="flex h-9 min-w-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-[13px] font-medium text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">{{ $totalPages }}</button>
+                                    class="flex h-9 min-w-9 items-center justify-center rounded-lg border border-slate-300 bg-white px-3 text-[13px] font-medium text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">{{ $totalPages }}</button>
                         </li>
                     @elseif ($pgEnd === $totalPages - 1)
                         <li>
                             <button type="button" wire:click="gotoPage({{ $totalPages }})" aria-label="Go to page {{ $totalPages }}"
-                                    class="flex h-9 min-w-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-[13px] font-medium text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">{{ $totalPages }}</button>
+                                    class="flex h-9 min-w-9 items-center justify-center rounded-lg border border-slate-300 bg-white px-3 text-[13px] font-medium text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">{{ $totalPages }}</button>
                         </li>
                     @endif
 
                     @if ($nextPage !== null)
                         <li>
                             <button type="button" wire:click="gotoPage({{ $nextPage }})" aria-label="Next page"
-                                    class="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+                                    class="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
                                 <span class="sr-only">Next</span>
                                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>
                             </button>
@@ -293,12 +293,12 @@
             </nav>
 
             <form wire:submit="submitGoToPage" class="flex items-center gap-2">
-                <label for="sh-goto" class="hidden text-[13px] font-medium text-slate-500 sm:inline">Go to</label>
+                <label for="sh-goto" class="hidden text-[13px] font-medium text-slate-600 sm:inline">Go to</label>
                 <input wire:model="goTo" type="number" id="sh-goto" min="1" max="{{ $totalPages }}" value="{{ $goTo }}"
-                       class="h-9 w-16 rounded-lg border border-slate-200 bg-white px-2 text-center text-[13px] font-medium text-slate-900 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+                       class="h-9 w-16 rounded-lg border border-slate-300 bg-white px-2 text-center text-[13px] font-medium text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
                 <button type="submit"
                         class="inline-flex h-9 items-center rounded-lg bg-blue-600 px-3 text-[13px] font-semibold text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">Go</button>
-                <span class="text-[13px] font-medium text-slate-500">of {{ $totalPages }}</span>
+                <span class="text-[13px] font-medium text-slate-600">of {{ $totalPages }}</span>
             </form>
         </div>
     </div>

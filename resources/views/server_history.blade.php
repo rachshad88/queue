@@ -201,6 +201,24 @@
         body.page-controller .controller-table.sh-table tbody tr.sh-selected td,
         body.page-controller .controller-table.sh-table tbody tr.sh-selected th { background-color: #eff6ff; }
 
+        /* Sticky header band: opaque steel-navy so scrolled rows never ghost
+           through it, plus a hairline base. Row separators restore the scan
+           lines while the Tailwind utilities keep cell padding/typography. */
+        body.page-controller .controller-table.sh-table thead tr {
+            background: linear-gradient(180deg, #1a3a6b, #143063);
+            border-bottom: 0.5px solid rgba(127, 180, 238, .32);
+        }
+        body.page-controller .controller-table.sh-table thead th { border-bottom: 0; }
+        body.page-controller .controller-table.sh-table tbody td { border-bottom: 1px solid #eef2f7; }
+        body.page-controller .controller-table.sh-table tbody tr:last-child td { border-bottom: 0; }
+
+        /* rhu-uniform paints every h2/label in the light navy palette for the
+           dark page; this card is white, so its own heading/label text must be
+           dark again. (Unlayered <style> beats the rhu layer regardless of
+           specificity.) */
+        body.page-controller section[aria-label="Queue list"] h2 { color: #1e293b; }
+        body.page-controller section[aria-label="Queue list"] label { color: #475569; }
+
         /* ============ details modal ============ */
         .sh-modal { position: fixed; inset: 0; z-index: 500; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(15,23,42,.5); }
         .sh-modal[hidden] { display: none; }
