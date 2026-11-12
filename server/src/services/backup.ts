@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync } from 'node:fs';
-import { readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { copyFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { config } from '../config';
@@ -120,6 +120,31 @@ export async function verifyBackup(file: string): Promise<string> {
   } finally {
     await scratch.dropDatabase().catch(() => undefined);
   }
+}
+
+/**
+ * Copy a verified backup to the second folder (BACKUP_COPY_DIR), then delete
+ * older copies there beyond BACKUP_KEEP. The new copy is written under a
+ * temporary name first, so a failed copy never replaces a good one.
+ */
+export async function copyToSecondFolder(file: string): Promise<string> {
+  if (!config.backup.copyDirectory) {
+    return 'No copy folder set (BACKUP_COPY_DIR).';
+  }
+  if (!validFileName(file)) {
+    throw new Error('Invalid backup file name.');
+  }
+  const dir = path.resolve(config.backup.copyDirectory);
+  mkdirSync(dir, { recursive: true, mode: 0o750 });
+  const partial = path.join(dir, `${file}.partial`);
+  await copyFile(path.join(backupDirectory(), file), partial);
+  await rename(partial, path.join(dir, file));
+  const copies = (await readdir(dir)).filter(validFileName).sort().reverse();
+  const doomed = copies.slice(Math.max(1, config.backup.keep));
+  for (const old of doomed) {
+    await rm(path.join(dir, old), { force: true });
+  }
+  return `Copied to ${dir}: kept ${copies.length - doomed.length}, removed ${doomed.length}.`;
 }
 
 /** Keep the newest `keep` backups and delete the rest. */

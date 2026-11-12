@@ -1,9 +1,12 @@
+import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { config } from '../src/config';
 import { backupJobs, departments, sections, securityEvents, users } from '../src/db';
 import { assessRequest, ipBlocks, ipMatches, riskLevel } from '../src/middleware/security';
-import { inventory, pruneBackups, takeBackup, verifyBackup } from '../src/services/backup';
+import { copyToSecondFolder, inventory, pruneBackups, takeBackup, verifyBackup } from '../src/services/backup';
 import { app, client, loggedIn, makeUser, PASSWORD, seedRow, useDatabase } from './helpers';
 
 useDatabase();
@@ -392,6 +395,25 @@ describe('database backups', () => {
     expect(await pruneBackups(1)).toContain('removed 1');
     expect((await inventory()).map((f) => f.file)).not.toContain(first.file);
     await expect(verifyBackup('../../etc/passwd')).rejects.toThrow('Invalid backup file name.');
+  }, 60000);
+
+  it('copies a backup to the second folder and keeps only the newest copies there', async () => {
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'rhu-copy-'));
+    const previous = config.backup.copyDirectory;
+    config.backup.copyDirectory = dir;
+    try {
+      const first = await takeBackup();
+      await new Promise((r) => setTimeout(r, 1100));
+      const second = await takeBackup();
+      await copyToSecondFolder(first.file);
+      expect(await copyToSecondFolder(second.file)).toContain(`removed ${config.backup.keep >= 2 ? 0 : 1}`);
+      expect(readdirSync(dir)).toContain(second.file);
+      await expect(copyToSecondFolder('../evil.archive.gz')).rejects.toThrow('Invalid backup file name.');
+    } finally {
+      config.backup.copyDirectory = previous;
+      rmSync(dir, { recursive: true, force: true });
+      await pruneBackups(1);
+    }
   }, 60000);
 
   it('requires the password to delete and never deletes the last backup', async () => {

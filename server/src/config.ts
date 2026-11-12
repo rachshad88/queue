@@ -53,8 +53,10 @@ export const config = {
 
   backup: {
     directory: process.env.BACKUP_DIR ?? './storage/backups',
+    /** Second folder that receives a copy of each verified nightly backup (empty = off). */
+    copyDirectory: process.env.BACKUP_COPY_DIR ?? '',
     keep: int(process.env.BACKUP_KEEP, 7),
-    schedule: 'Nightly at 02:00',
+    schedule: 'Nightly at 02:00 (Manila)',
     warnHours: 26,
   },
 
