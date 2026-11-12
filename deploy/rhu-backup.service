@@ -1,0 +1,11 @@
+# Adjust WorkingDirectory, EnvironmentFile and User to match where the app is installed.
+[Unit]
+Description=RHU Queue MongoDB backup
+
+[Service]
+Type=oneshot
+User=www-data
+WorkingDirectory=/home/user/queue-ts
+EnvironmentFile=/home/user/queue-ts/.env
+ExecStart=/usr/bin/npm run backup -- --action=backup
+ExecStartPost=/usr/bin/npm run backup -- --action=prune

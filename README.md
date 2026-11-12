@@ -1,58 +1,66 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# RHU Queue Management System
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Patient queueing for a rural health unit: ticket kiosks, operator consoles,
+wall monitors with spoken announcements, and admin tools.
 
-## About Laravel
+- **Server**: TypeScript, Express 5, Socket.IO (`server/`)
+- **Client**: TypeScript, React 19, Vite (`client/`)
+- **Database**: MongoDB (works on 4.4 and newer; no replica set needed)
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Setup
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
-
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+```sh
+npm install
+cp .env.example .env        # then set MONGO_URL and SESSION_SECRET
+npm run seed                # departments, windows and a superadmin account
+npm run build               # builds the React app into client/dist
+npm start                   # serves the API, the socket and the app on PORT
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+`npm run seed` creates the account `superadmin` with the default password
+`12345` (or `SEED_ADMIN_PASSWORD` if set). Sign in and change it.
 
-## Contributing
+For development, `npm run dev` runs the API with reload and the Vite dev
+server on http://localhost:5173.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Commands
 
-## Code of Conduct
+| Command | What it does |
+| --- | --- |
+| `npm test` | Server tests. Starts a throwaway `mongo:4.4` Docker container on port 27117. |
+| `npm run typecheck` | Type-checks server and client. |
+| `npm run backup -- --action=backup` | Takes a `mongodump` archive (also `verify --file=...`, `prune`). |
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Pages
 
-## Security Vulnerabilities
+| Path | Who | Purpose |
+| --- | --- | --- |
+| `/kiosk/waiting`, `/kiosk/abtc` | public | Ticket machines |
+| `/live` | public | Wall monitor with announcements |
+| `/` | staff | Operator console |
+| `/choose-section/admission`, `/choose-section/waiting` | staff | Window chooser |
+| `/server-history`, `/audit-trail` | staff | Reports |
+| `/users`, `/departments` | admin | Management |
+| `/queue-logs`, `/sections`, `/backup` | superadmin | Logs, windows, backups |
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Queue rules
 
-## License
+- Serve order is emergency, then priority, then regular, each first come
+  first served by arrival at the current department.
+- "Today" means tickets issued on the current Manila calendar day.
+- Ticket numbers restart at 001 each day per department and prefix
+  (`R/P/E`, `AR/AP/AE` for ABTC, `DR/DP/DE` for dental).
+- An operator holds at most one patient per department. A unique MongoDB
+  index enforces this.
+- Admission (id 3) and Waiting Area (id 15) work through windows. Clinics
+  1, 2 and 3 (ids 1, 2, 4) form the mutual help pool. These ids are set in
+  `server/src/config.ts` and can be overridden in `.env`.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Deployment
+
+`deploy/` has a systemd unit for the app, a nightly backup timer and an
+nginx reverse proxy example. The realtime socket runs inside the app
+process, so no separate socket server is needed.
+
+Backups need the MongoDB Database Tools (`mongodump`, `mongorestore`) on the
+server.
