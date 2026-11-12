@@ -78,6 +78,8 @@ export interface QueueLogDoc {
   new_status: string | null;
   created_at: Date;
   client_ip: string | null;
+  /** Physician or admin whose password approved a bypass serve (row Serve). */
+  approved_by?: number | null;
 }
 
 export interface SectionLogDoc {

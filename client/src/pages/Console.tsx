@@ -163,6 +163,7 @@ export function Console() {
       actions={
         <>
           {(q?.active_window ?? info.active_window) && <span className="badge status-serving">{q?.active_window ?? info.active_window}</span>}
+          {q?.window_serves_priority != null && <span className={`badge ${q.window_serves_priority ? 'cat-priority' : 'cat-regular'}`}>{q.window_serves_priority ? 'Priority + regular' : 'Regular only'}</span>}
           {info.sectioned && !info.is_superadmin && <Link className="btn btn-sm" to={`/choose-section/${info.section_kind}`} style={{ textDecoration: 'none' }}>Change window</Link>}
         </>
       }

@@ -58,7 +58,7 @@ reportsRouter.get('/audit-trail', async (req, res) => {
       filter.queue_number = contains(search);
     }
     const logs = await queueLog().find(filter).sort({ created_at: -1, _id: -1 }).limit(2000).toArray();
-    const names = await staffNames(logs.map((l) => l.user_id));
+    const names = await staffNames([...logs.map((l) => l.user_id), ...logs.map((l) => l.approved_by ?? null)]);
     const deptNames = new Map((await departments().find().toArray()).map((d) => [d._id, d.name]));
     for (const log of logs) {
       rows.push({
@@ -68,6 +68,7 @@ reportsRouter.get('/audit-trail', async (req, res) => {
         created_at: log.created_at,
         department: deptNames.get(log.department_id) ?? '',
         operator: log.user_id ? (names[log.user_id] ?? '') : '',
+        approved_by: log.approved_by ? (names[log.approved_by] ?? 'Deleted user') : null,
       });
     }
   }
@@ -103,7 +104,7 @@ reportsRouter.get('/queue-logs', requireSuperadmin, async (req, res) => {
   const paging = paginate(await queueLog().countDocuments(filter), num(req.query.page) || 1, PAGE_SIZE);
   const logs = await queueLog().find(filter).sort({ created_at: -1, _id: -1 }).skip(paging.offset).limit(PAGE_SIZE).toArray();
   const operatorIds = (await queueLog().distinct('user_id')).filter((id): id is number => typeof id === 'number');
-  const names = await staffNames([...operatorIds, ...logs.map((l) => l.user_id)]);
+  const names = await staffNames([...operatorIds, ...logs.map((l) => l.user_id), ...logs.map((l) => l.approved_by ?? null)]);
   const deptNames = new Map((await departments().find().toArray()).map((d) => [d._id, d.name]));
 
   res.json({
@@ -125,6 +126,7 @@ reportsRouter.get('/queue-logs', requireSuperadmin, async (req, res) => {
       created_at: l.created_at,
       department: deptNames.get(l.department_id) ?? '',
       operator_name: l.user_id ? (names[l.user_id] ?? '') : '',
+      approved_by: l.approved_by ? (names[l.approved_by] ?? 'Deleted user') : null,
     })),
     paging,
   });

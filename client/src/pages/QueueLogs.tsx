@@ -61,7 +61,10 @@ export function QueueLogs() {
                   <td>{r.action}</td>
                   <td>{r.old_status ?? ''}{r.new_status ? ` to ${r.new_status}` : ''}</td>
                   <td>{r.department}</td>
-                  <td>{r.operator_name || <span className="muted">System</span>}</td>
+                  <td>
+                    {r.operator_name || <span className="muted">System</span>}
+                    {r.approved_by && <div className="muted" style={{ fontSize: '0.8rem' }}>Approved by {r.approved_by}</div>}
+                  </td>
                   <td>{r.client_ip}</td>
                 </tr>
               ))}

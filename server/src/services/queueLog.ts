@@ -11,6 +11,7 @@ export async function logQueueAction(
   oldDepartmentId: number | null,
   oldStatus: string | null,
   newStatus: string | null,
+  approvedBy: number | null = null,
 ): Promise<boolean> {
   try {
     await queueLog().insertOne({
@@ -24,6 +25,7 @@ export async function logQueueAction(
       new_status: newStatus,
       client_ip: ip || null,
       created_at: new Date(),
+      ...(approvedBy ? { approved_by: approvedBy } : {}),
     });
     return true;
   } catch (error) {

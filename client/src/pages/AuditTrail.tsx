@@ -40,7 +40,7 @@ export function AuditTrail() {
               <tbody>
                 {(data.rows ?? []).length === 0 && <tr><td colSpan={5} className="empty">{loading ? 'Loading' : 'Nothing recorded for that filter.'}</td></tr>}
                 {(data.rows ?? []).map((r: Record<string, any>) => (
-                  <tr key={r.id}><td><strong>{r.queue_number}</strong></td><td>{r.action}</td><td>{r.department}</td><td>{r.operator || <span className="muted">System</span>}</td><td className="nowrap">{formatDateTime(r.created_at)}</td></tr>
+                  <tr key={r.id}><td><strong>{r.queue_number}</strong></td><td>{r.action}</td><td>{r.department}</td><td>{r.operator || <span className="muted">System</span>}{r.approved_by && <div className="muted" style={{ fontSize: '0.8rem' }}>Approved by {r.approved_by}</div>}</td><td className="nowrap">{formatDateTime(r.created_at)}</td></tr>
                 ))}
               </tbody>
             </table>

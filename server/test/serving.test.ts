@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import { describe, expect, it } from 'vitest';
 import { departments, queue, queueLog, sectionLog, sections, users } from '../src/db';
 import { emitted } from '../src/realtime';
@@ -101,12 +102,14 @@ describe('serve next (clinic)', () => {
 
 describe('queue polling', () => {
   it('lists the live queue with the day figures and the next-up preview', async () => {
-    const id = await makeUser('doc1', 5);
+    await makeUser('doc1', 5);
     await seedRow(5, 'R-001', { secondsAgo: 300 });
     await seedRow(5, 'R-002', { secondsAgo: 200 });
-    await seedRow(5, 'R-003', { status: 'done', servedBy: id });
+    await seedRow(5, 'R-003', { secondsAgo: 400 });
     await seedRow(5, 'R-777', { secondsAgo: 3 * DAY });
     const c = await loggedIn('doc1');
+    await c.post('/api/serve-next', { department_id: 5 });
+    await c.post('/api/finish', { department_id: 5 });
     await c.post('/api/serve-next', { department_id: 5 });
     const res = (await c.get('/api/queue?department_id=5')).body;
     expect(res.queues.map((q: { queue_number: string }) => q.queue_number)).toEqual(['R-001', 'R-002']);
@@ -159,6 +162,40 @@ describe('windows (admission and waiting)', () => {
     await c.post('/api/sections/admission/assign', { section_id: 3 });
     expect((await sections().findOne({ _id: 'admission:1' }))!.occupied_by).toBeNull();
     expect((await sections().findOne({ _id: 'admission:3' }))!.status).toBe(1);
+  });
+
+  it('calls priority patients only at the priority windows; the others call regular tickets only', async () => {
+    await makeUser('wait1', 15);
+    await makeUser('wait3', 15);
+    await makeUser('adm1', 3);
+    await seedRow(15, 'R-001', { secondsAgo: 300 });
+    const p = await seedRow(15, 'P-001', { category: 'priority', secondsAgo: 200 });
+    await seedRow(15, 'E-001', { category: 'emergency', secondsAgo: 100 });
+    const priorityWindow = await loggedIn('wait1');
+    const regularWindow = await loggedIn('wait3');
+    await priorityWindow.post('/api/sections/waiting/assign', { section_id: 1 });
+    await regularWindow.post('/api/sections/waiting/assign', { section_id: 3 });
+
+    const regularView = (await regularWindow.get('/api/queue?department_id=15')).body;
+    expect(regularView).toMatchObject({ window_serves_priority: false, waiting_total: 1, next_up: { queue_number: 'R-001' } });
+    expect(regularView.queues.map((q: { queue_number: string }) => q.queue_number)).toEqual(['R-001']);
+    expect((await regularWindow.post('/api/queue-action', { action: 'serve', queue_id: p, approver_password: PASSWORD })).body.message).toBe(
+      'Waiting Area 3 serves regular tickets only. P-001 goes to Waiting Area 1 or Waiting Area 2.',
+    );
+    expect((await regularWindow.post('/api/serve-next', { department_id: 15 })).body.queue_number).toBe('R-001');
+    await regularWindow.post('/api/finish', { department_id: 15 });
+    expect((await regularWindow.post('/api/serve-next', { department_id: 15 })).body.message).toContain('This window calls regular tickets only');
+
+    expect((await priorityWindow.get('/api/queue?department_id=15')).body).toMatchObject({ window_serves_priority: true, next_up: { queue_number: 'E-001' } });
+    expect((await priorityWindow.post('/api/serve-next', { department_id: 15 })).body.queue_number).toBe('E-001');
+
+    await seedRow(3, 'P-002', { category: 'priority' });
+    const admission = await loggedIn('adm1');
+    await admission.post('/api/sections/admission/assign', { section_id: 1 });
+    expect((await admission.post('/api/serve-next', { department_id: 3 })).body.success).toBe(false);
+    await admission.post('/api/sections/admission/assign', { section_id: 3 });
+    expect((await admission.post('/api/serve-next', { department_id: 3 })).body.queue_number).toBe('P-002');
+    expect((await admission.get('/api/sections/admission')).body.sections.map((w: { serves_priority: boolean }) => w.serves_priority)).toEqual([false, false, true, true]);
   });
 
   it('keeps other departments off the windows', async () => {
@@ -244,6 +281,18 @@ describe('row actions, finish and repeat', () => {
     expect((await c.post('/api/queue-action', { action: 'serve', queue_id: id, approver_password: 'nope' })).body.message).toBe('Invalid credentials');
     expect((await c.post('/api/queue-action', { action: 'serve', queue_id: id, approver_password: PASSWORD })).body.success).toBe(true);
     expect((await row(id))!.status).toBe('serving');
+  });
+
+  it('records which physician approved a bypass serve, and shows it in the logs', async () => {
+    await makeUser('lab1', 5);
+    const doctor = await makeUser('doc1', 1);
+    await users().updateOne({ _id: doctor }, { $set: { password: await bcrypt.hash('doctor-only-pw', 4) } });
+    const id = await seedRow(5, 'R-002');
+    expect((await (await loggedIn('lab1')).post('/api/queue-action', { action: 'serve', queue_id: id, approver_password: 'doctor-only-pw' })).body.success).toBe(true);
+    expect(await queueLog().findOne({ queue_id: id, action: 'serve' })).toMatchObject({ approved_by: doctor });
+    const admin = await loggedIn('superadmin');
+    expect((await admin.get('/api/queue-logs?action=serve')).body.records[0]).toMatchObject({ queue_number: 'R-002', approved_by: 'doc1 Tester' });
+    expect((await admin.get('/api/audit-trail?search=R-002')).body.rows.find((r: { action: string }) => r.action === 'serve')).toMatchObject({ approved_by: 'doc1 Tester' });
   });
 
   it('cannot act on another department’s row', async () => {
@@ -341,6 +390,19 @@ describe('transfers and returning patients', () => {
     const listed = (await lab.get('/api/queue?department_id=5')).body.queues[0];
     expect(listed.is_returning).toBe(true);
     expect((await lab.post('/api/prioritize', { code: 'AB12' })).body.message).toBe('That ticket is already waiting in this department');
+  });
+
+  it('keeps counting a lab patient as finished there after they return and move on', async () => {
+    await makeUser('lab1', 5);
+    const id = await seedRow(5, 'R-001', { returnCode: 'CD34' });
+    const lab = await loggedIn('lab1');
+    await lab.post('/api/serve-next', { department_id: 5 });
+    await lab.post('/api/finish', { department_id: 5 });
+    await lab.post('/api/prioritize', { code: 'CD34' });
+    await lab.post('/api/serve-next', { department_id: 5 });
+    expect((await lab.post('/api/transfer', { department_id: 1 })).body.success).toBe(true);
+    expect((await row(id))!.department_id).toBe(1);
+    expect((await lab.get('/api/queue?department_id=5')).body.finished_today).toBe(1);
   });
 });
 

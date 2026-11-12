@@ -11,6 +11,8 @@ interface Row {
   section_name: string;
   occupied_by: number | null;
   staff: string | null;
+  /** Calls emergency and priority patients too; otherwise regular tickets only. */
+  serves_priority: boolean;
 }
 
 /** Admission and Waiting staff pick the window they are sitting at before serving. */
@@ -64,6 +66,7 @@ export function ChooseSection() {
             return (
               <div key={row.id} className={`window-card${mine ? ' mine' : taken ? ' taken' : ''}`}>
                 <h2>{row.section_name}</h2>
+                <span className={`badge ${row.serves_priority ? 'cat-priority' : 'cat-regular'}`}>{row.serves_priority ? 'Priority + regular' : 'Regular only'}</span>
                 <p className="muted">{mine ? 'You are at this window' : taken ? `Held by ${row.staff ?? 'staff'}` : 'Free'}</p>
                 {!taken && (
                   <button className="btn btn-primary" onClick={() => void claim(row, false)}>

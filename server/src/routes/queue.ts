@@ -10,7 +10,7 @@ import { attachIssuerNames, departmentNames, waitingCountsByDepartment } from '.
 import { claimAndServe, isPooledDept, pooledWaitingRows, SERVE_ORDER, todaysQueue } from '../services/pool';
 import { logQueueAction, returningIds } from '../services/queueLog';
 import { stampActivity } from '../services/singleLogin';
-import { isSectionedDept, markSectionActivity, markSectionOccupied, operatorSection, sectionKindForDept, sectionRoster } from '../services/stations';
+import { isSectionedDept, markSectionActivity, markSectionOccupied, operatorSection, priorityWindowNames, sectionKindForDept, sectionRoster, windowCategoryFilter, windowServesPriority } from '../services/stations';
 import { finishFirst, finishFirstMessage, isUnattended, unattendedServing } from '../services/unattended';
 import { manilaDayStart } from '../time';
 import { clientIp, isInactive, num, sortDepartments, str, trimmed } from '../util';
@@ -154,7 +154,7 @@ async function transferProvenance(queueIds: number[], departmentId: number): Pro
  * claim's stages and scope: own department, the dental fallback for the
  * waiting area, then the mutual-help pool.
  */
-async function resolveNextUp(departmentId: number) {
+async function resolveNextUp(departmentId: number, lane: { category?: 'regular' } = {}) {
   const payload = async (row: QueueDoc, source: string) => ({
     id: row._id,
     queue_number: row.queue_number,
@@ -164,14 +164,14 @@ async function resolveNextUp(departmentId: number) {
     department_name: await departmentName(row.department_id),
   });
 
-  const own = await queue().findOne({ department_id: departmentId, status: 'waiting', ...todaysQueue() }, { sort: SERVE_ORDER });
+  const own = await queue().findOne({ department_id: departmentId, status: 'waiting', ...lane, ...todaysQueue() }, { sort: SERVE_ORDER });
   if (own) {
     return payload(own, 'own');
   }
   if (departmentId === config.waitingDeptId) {
     const dental = await dentalDepartment();
     const row = dental
-      ? await queue().findOne({ department_id: dental._id, status: 'waiting', queue_number: DENTAL_NUMBER, ...todaysQueue() }, { sort: SERVE_ORDER })
+      ? await queue().findOne({ department_id: dental._id, status: 'waiting', queue_number: DENTAL_NUMBER, ...lane, ...todaysQueue() }, { sort: SERVE_ORDER })
       : null;
     if (row) {
       return payload(row, 'dental');
@@ -220,10 +220,15 @@ queueRouter.get('/queue', async (req, res) => {
   const unattended = await unattendedServing(await scopeDepartments(departmentId));
   const unattendedNames = new Map(unattended.map((u) => [u._id, u.served_by_name]));
 
+  // A regular-only window lists and counts regular tickets only.
+  const windowKind = sectionKindForDept(departmentId, deptName);
+  const window = windowKind ? await operatorSection(s, sessionUserId, departmentId) : null;
+  const lane = windowKind && window ? windowCategoryFilter(windowKind, window.section_id) : {};
+
   let rows: QueueRow[];
   if (isSectionedDept(departmentId)) {
     const serving = await queue().find({ department_id: departmentId, served_by: operatorId, status: 'serving', ...today }).toArray();
-    const waiting = await queue().find({ department_id: departmentId, status: { $in: ['waiting', 'hold'] }, ...today }).sort(SERVE_ORDER).toArray();
+    const waiting = await queue().find({ department_id: departmentId, status: { $in: ['waiting', 'hold'] }, ...lane, ...today }).sort(SERVE_ORDER).toArray();
     rows = [...serving.map((q) => toRow(q, deptName, operatorId)), ...waiting.map((q) => toRow(q, deptName, null))];
   } else {
     const live = await queue().find({ department_id: departmentId, status: { $in: ['waiting', 'serving', 'hold'] }, ...today }).toArray();
@@ -249,9 +254,11 @@ queueRouter.get('/queue', async (req, res) => {
   }));
 
   const dayStart = manilaDayStart();
-  const [waitingTotal, finishedToday, loggedHereToday, arrivedHereToday] = await Promise.all([
-    queue().countDocuments({ department_id: departmentId, status: 'waiting', ...today }),
-    queue().countDocuments({ department_id: departmentId, status: 'done', created_at: { $gte: dayStart } }),
+  const [waitingTotal, finishedHereToday, loggedHereToday, arrivedHereToday] = await Promise.all([
+    queue().countDocuments({ department_id: departmentId, status: 'waiting', ...lane, ...today }),
+    // Patients this department finished today, even if they later came back
+    // (a returning lab patient) and moved on to another department.
+    queueLog().distinct('queue_id', { department_id: departmentId, action: 'finished', created_at: { $gte: dayStart } }),
     queueLog().distinct('queue_id', { department_id: departmentId, created_at: { $gte: dayStart } }),
     queue().distinct('_id', { department_id: departmentId, $or: [{ created_at: { $gte: dayStart } }, { transferred_at: { $gte: dayStart } }] }),
   ]);
@@ -261,7 +268,6 @@ queueRouter.get('/queue', async (req, res) => {
 
   const current = await resolveCurrentPatient(departmentId, operatorId);
   const dental = await dentalDepartment();
-  const window = sectionKindForDept(departmentId, deptName) ? await operatorSection(s, sessionUserId, departmentId) : null;
 
   res.set('Cache-Control', 'no-store');
   res.json({
@@ -270,14 +276,15 @@ queueRouter.get('/queue', async (req, res) => {
     queues,
     waiting_total: waitingTotal,
     patients_today: patientsToday,
-    finished_today: finishedToday,
+    finished_today: finishedHereToday.length,
     serving_queue_number: current?.queue_number ?? null,
     serving_row_id: current?.id ?? null,
     serving_department_id: current?.department_id ?? null,
     serving_department_name: current?.department_name || null,
     dental_department_id: dental?._id ?? null,
-    next_up: await resolveNextUp(departmentId),
+    next_up: await resolveNextUp(departmentId, lane),
     active_window: window?.section_name ?? null,
+    window_serves_priority: windowKind && window ? windowServesPriority(windowKind, window.section_id) : null,
   });
 });
 
@@ -354,16 +361,18 @@ queueRouter.post('/serve-next', async (req, res) => {
         return { success: false, message: elsewhere };
       }
 
-      // Every window serves every category, urgency first, FIFO within tier.
-      let row = await claimNext({ department_id: departmentId, ...today }, servedBy, section.section_id);
+      // Priority windows call emergency, then priority, then regular; the
+      // other windows call regular tickets only. First come within each.
+      const lane = windowCategoryFilter(kind, section.section_id);
+      let row = await claimNext({ department_id: departmentId, ...lane, ...today }, servedBy, section.section_id);
       // Waiting-area fallback: the oldest dental-issued patient. The row stays
       // in the dental department; the operator's window is still recorded.
       if (!row && isWaiting) {
         const dental = await dentalDepartment();
-        row = dental ? await claimNext({ department_id: dental._id, queue_number: DENTAL_NUMBER, ...today }, servedBy, section.section_id) : null;
+        row = dental ? await claimNext({ department_id: dental._id, queue_number: DENTAL_NUMBER, ...lane, ...today }, servedBy, section.section_id) : null;
       }
       if (!row) {
-        return { success: false, message: emptyMessage };
+        return { success: false, message: lane.category ? `No regular patients waiting. This window calls regular tickets only; priority and emergency patients go to ${priorityWindowNames(kind)}.` : emptyMessage };
       }
       await markSectionOccupied(section.section_id, servedBy, kind, ip);
       await logQueueAction(ip, row._id, row.queue_number, row.department_id, servedBy, 'serving', null, 'waiting', 'serving');
@@ -446,7 +455,7 @@ queueRouter.post('/finish', async (req, res) => {
  * Approval gate for the row-level "Serve" action: the submitted password must
  * match an active physician (CLINIC 1-4) or an admin account.
  */
-async function verifyServeApproval(password: string): Promise<{ ok: boolean; error?: string }> {
+async function verifyServeApproval(password: string): Promise<{ ok: boolean; error?: string; approverId?: number }> {
   if (password === '') {
     return { ok: false, error: 'Physician/Admin approval required' };
   }
@@ -466,7 +475,7 @@ async function verifyServeApproval(password: string): Promise<{ ok: boolean; err
   }
   for (const approver of approvers) {
     if (approver.password && (await bcrypt.compare(password, approver.password))) {
-      return { ok: true };
+      return { ok: true, approverId: approver._id };
     }
   }
   return { ok: false, error: 'Invalid credentials' };
@@ -586,6 +595,10 @@ queueRouter.post('/queue-action', async (req, res) => {
     if (sectioned && !servingWindow) {
       return done({ success: false, message: 'Not assigned to a section.' });
     }
+    const windowKind = sectionKindForDept(departmentId);
+    if (servingWindow && windowKind && !windowServesPriority(windowKind, servingWindow.section_id) && (row.category ?? 'regular') !== 'regular') {
+      return done({ success: false, message: `${servingWindow.section_name} serves regular tickets only. ${row.queue_number} goes to ${priorityWindowNames(windowKind)}.` });
+    }
     if (!row.arrival_at || row.arrival_at < manilaDayStart()) {
       return done({ success: false, message: 'This ticket is from an earlier day and can no longer be served.' });
     }
@@ -620,7 +633,7 @@ queueRouter.post('/queue-action', async (req, res) => {
     if (outcome !== null) {
       return done({ success: false, message: outcome });
     }
-    await logQueueAction(ip, row._id, row.queue_number, row.department_id, userId, 'serve', null, current, 'serving');
+    await logQueueAction(ip, row._id, row.queue_number, row.department_id, userId, 'serve', null, current, 'serving', approval.approverId ?? null);
 
     // Carry the number (and window label) so walls announce the serve immediately.
     const payload: Record<string, unknown> = { dept: departmentId, queue_number: row.queue_number };

@@ -22,6 +22,19 @@ export function sectionKindForDept(deptId: number, deptName: string | null = '')
   return null;
 }
 
+/**
+ * Window lanes. These windows call emergency, then priority, then regular
+ * patients; every other window calls regular tickets only, so a long line of
+ * priority patients never stalls the regular line.
+ */
+const PRIORITY_WINDOWS: Record<SectionKind, readonly number[]> = { waiting: [1, 2], admission: [3, 4] };
+export const windowServesPriority = (kind: SectionKind, sectionId: number): boolean => PRIORITY_WINDOWS[kind].includes(sectionId);
+export const priorityWindowNames = (kind: SectionKind): string =>
+  PRIORITY_WINDOWS[kind].map((n) => `${kind === 'waiting' ? 'Waiting Area' : 'Admission'} ${n}`).join(' or ');
+/** Queue filter for what a window may call: everything at a priority window, regular tickets elsewhere. */
+export const windowCategoryFilter = (kind: SectionKind, sectionId: number): { category?: 'regular' } =>
+  windowServesPriority(kind, sectionId) ? {} : { category: 'regular' };
+
 export const isSectionedDept = (deptId: number): boolean => deptId === config.admissionDeptId || deptId === config.waitingDeptId;
 
 /** Heartbeat: refresh updated_at on every window this staffer occupies. */
@@ -111,6 +124,8 @@ export interface SectionRosterRow {
   updated_at: Date | null;
   staff: string | null;
   username: string | null;
+  /** Calls emergency and priority patients too; otherwise regular tickets only. */
+  serves_priority: boolean;
 }
 
 /** Windows of one kind with the occupant's display name. */
@@ -129,6 +144,7 @@ export async function sectionRoster(kind: SectionKind): Promise<SectionRosterRow
       updated_at: r.updated_at,
       staff: occupant ? fullName(occupant) || occupant.username : null,
       username: occupant?.username ?? null,
+      serves_priority: windowServesPriority(kind, r.section_id),
     };
   });
 }
