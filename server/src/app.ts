@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import express, { type ErrorRequestHandler } from 'express';
 import { config } from './config';
-import { requireLogin, verifyCsrf } from './middleware/auth';
+import { CONSOLE_PATHS, refuseKioskMode, requireLogin, verifyCsrf } from './middleware/auth';
 import { detectAutomatedVisitor, securityRateLimit, trackResponses } from './middleware/security';
 import { adminRouter } from './routes/admin';
 import { authRouter } from './routes/auth';
@@ -49,6 +49,7 @@ export function createApp(): express.Express {
   api.use(publicRouter);
   // Everything below requires a signed-in, single-device session.
   api.use(requireLogin);
+  api.use(CONSOLE_PATHS, refuseKioskMode);
   api.use(queueRouter);
   api.use(transferRouter);
   api.use(sectionsRouter);

@@ -47,6 +47,18 @@ export const requireLogin: RequestHandler = async (req, res, next) => {
   next();
 };
 
+/** Staff console endpoints a kiosk-mode login may not use. */
+export const CONSOLE_PATHS = ['/console', '/queue', '/serve-next', '/finish', '/queue-action', '/repeat-call', '/transfer', '/prioritize', '/pool-waiting', '/serve-pool', '/sections/:kind/assign'];
+
+/** A login switched to kiosk mode ("for customer") only hands out tickets until it signs out. */
+export const refuseKioskMode: RequestHandler = (req, res, next) => {
+  if (req.session.view_mode === 'for_customer') {
+    res.status(403).json({ success: false, message: 'This login is in kiosk mode and can only issue tickets. Sign out and sign in again to use the queue console.' });
+    return;
+  }
+  next();
+};
+
 export const requireAdmin: RequestHandler = (req, res, next) => {
   if (req.session.usertype !== 'admin') {
     res.status(403).json({ success: false, message: 'Access denied.' });

@@ -8,6 +8,30 @@ import { app, client, loggedIn, makeUser, seedRow, useDatabase } from './helpers
 useDatabase();
 
 describe('ticket kiosks', () => {
+  it('lets a kiosk-mode login issue tickets but not serve, transfer or claim windows', async () => {
+    await makeUser('abtckiosk', 8);
+    await seedRow(8, 'AR-001');
+    const k = await loggedIn('abtckiosk');
+    expect((await k.post('/api/for-customer', { section_id: 0 })).body.success).toBe(true);
+    expect((await k.post('/api/kiosk/abtc', { category: 'priority' })).body).toMatchObject({ success: true, queue_number: 'AP-001' });
+    for (const [method, path, body] of [
+      ['post', '/api/serve-next', { department_id: 8 }],
+      ['post', '/api/finish', { department_id: 8 }],
+      ['post', '/api/queue-action', { action: 'hold', queue_id: 1 }],
+      ['post', '/api/transfer', { department_id: 1 }],
+      ['post', '/api/sections/waiting/assign', { section_id: 1 }],
+      ['get', '/api/queue?department_id=8', undefined],
+    ] as const) {
+      const res = method === 'get' ? await k.get(path) : await k.post(path, body);
+      expect(res.status, path).toBe(403);
+      expect(res.body.message).toContain('kiosk mode');
+    }
+    expect(await queue().countDocuments({ department_id: 8, status: 'waiting' })).toBe(2);
+    await k.post('/api/logout');
+    const fresh = await loggedIn('abtckiosk');
+    expect((await fresh.post('/api/serve-next', { department_id: 8 })).body.success).toBe(true);
+  });
+
   it('issues sequential waiting tickets with a return code, anonymously', async () => {
     const kiosk = await client();
     const first = await kiosk.post('/api/kiosk/waiting', { category: 'regular' });
