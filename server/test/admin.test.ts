@@ -5,7 +5,7 @@ import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { config } from '../src/config';
 import { backupJobs, departments, sections, securityEvents, users } from '../src/db';
-import { assessRequest, ipBlocks, ipMatches, riskLevel } from '../src/middleware/security';
+import { assessRequest, detectAutomatedVisitor, ipBlocks, ipMatches, riskLevel } from '../src/middleware/security';
 import { copyToSecondFolder, inventory, pruneBackups, takeBackup, verifyBackup } from '../src/services/backup';
 import { app, client, loggedIn, makeUser, PASSWORD, seedRow, useDatabase } from './helpers';
 
@@ -338,6 +338,28 @@ describe('security layer', () => {
       get: (name: string) => ({ 'user-agent': 'Mozilla/5.0', accept: 'text/html' })[name.toLowerCase()],
       ...overrides,
     }) as never;
+
+  it('never scores, logs or blocks the health check, and expires old security events', async () => {
+    const security = config.security as { detectionEnabled: boolean; enforce: boolean };
+    const saved = { detectionEnabled: security.detectionEnabled, enforce: security.enforce };
+    Object.assign(security, { detectionEnabled: true, enforce: true });
+    try {
+      const curl = (path: string) => fakeRequest({ path, originalUrl: path, get: (n: string) => (n === 'user-agent' ? 'curl/8.5.0' : '*/*') });
+      const outcome = (path: string) => {
+        let passed = false;
+        let status = 200;
+        const res = { status: (code: number) => ((status = code), res), json: () => res, set: () => res } as never;
+        detectAutomatedVisitor(curl(path), res, () => (passed = true));
+        return passed ? 'next' : status;
+      };
+      expect(outcome('/api/up')).toBe('next');
+      expect(outcome('/api/users')).not.toBe('next');
+    } finally {
+      Object.assign(security, saved);
+    }
+    const expiry = (await securityEvents().indexes()).find((i) => i.name === 'security_events_expiry');
+    expect(expiry?.expireAfterSeconds).toBe(90 * 86400);
+  });
 
   it('matches single addresses and CIDR ranges', () => {
     expect(ipMatches('127.0.0.1', ['127.0.0.1/8'])).toBe(true);

@@ -225,5 +225,16 @@ async function ensureIndexes(): Promise<void> {
   await sections().createIndex({ occupied_by: 1 });
 
   await securityEvents().createIndex({ event_type: 1, created_at: -1 });
+  // Old security events expire on their own (SECURITY_LOG_RETENTION_DAYS).
+  // A changed retention updates the existing index instead of failing startup.
+  const expireAfterSeconds = config.security.logRetentionDays * 86400;
+  try {
+    await securityEvents().createIndex({ created_at: 1 }, { name: 'security_events_expiry', expireAfterSeconds });
+  } catch (error) {
+    if ((error as { codeName?: string }).codeName !== 'IndexOptionsConflict') {
+      throw error;
+    }
+    await db().command({ collMod: securityEvents().collectionName, index: { name: 'security_events_expiry', expireAfterSeconds } });
+  }
   await sessions().createIndex({ expires: 1 }, { expireAfterSeconds: 0 });
 }

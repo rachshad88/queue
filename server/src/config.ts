@@ -113,5 +113,9 @@ export const config = {
     challengeFallback: (process.env.SECURITY_CHALLENGE_FALLBACK ?? 'rate_limit') as 'rate_limit' | 'forbid',
     logThreshold: int(process.env.SECURITY_LOG_THRESHOLD, 60),
     logToDatabase: flag(process.env.SECURITY_LOG_TO_DATABASE, true),
+    /** Security log entries are deleted after this many days. */
+    logRetentionDays: int(process.env.SECURITY_LOG_RETENTION_DAYS, 90),
+    /** Health checks (monitoring, curl after a deploy) are never scored, logged or blocked. */
+    healthPaths: ['/api/up'],
   },
 };

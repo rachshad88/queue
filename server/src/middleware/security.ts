@@ -235,7 +235,7 @@ export const securityRateLimit: RequestHandler = (req, res, next) => {
  */
 export const detectAutomatedVisitor: RequestHandler = (req, res, next) => {
   const ip = clientIp(req);
-  if (!sec.detectionEnabled || ipBlocks.isAllowed(ip)) {
+  if (!sec.detectionEnabled || ipBlocks.isAllowed(ip) || sec.healthPaths.includes(req.path)) {
     next();
     return;
   }
