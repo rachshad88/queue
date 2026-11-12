@@ -1,10 +1,11 @@
 import { Router } from 'express';
 import { config } from '../config';
-import { departments, queue, sectionLog, sections, type SectionKind } from '../db';
+import { departments, isDuplicateKey, queue, sectionLog, sections, type SectionKind } from '../db';
 import { requireSuperadmin } from '../middleware/auth';
 import { queueUpdated } from '../realtime';
 import { scopeDepartments } from '../services/currentPatient';
 import { staffNames, waitingCountsByDepartment } from '../services/lookups';
+import { logQueueAction } from '../services/queueLog';
 import { recordSectionEvent } from '../services/sectionLog';
 import { deptForKind, isSectionKind, operatorSection, sectionKey, sectionKindForDept, sectionRoster } from '../services/stations';
 import { clientIp, isInactive, num, sortDepartments } from '../util';
@@ -45,6 +46,19 @@ sectionsRouter.post('/sections/:kind/assign', async (req, res) => {
   const ip = clientIp(req);
   const at = new Date();
 
+  // A patient belongs to the window: one still being served here by someone
+  // else (signed out, timed out or displaced) passes to whoever takes the
+  // window, and stops being the previous staffer's patient.
+  const lane = await scopeDepartments(dept);
+  const leftHere = await queue().findOne({ department_id: { $in: lane }, status: 'serving', section_id: sectionId, served_by: { $ne: userId } }, { sort: { served_at: -1 } });
+  if (leftHere) {
+    const own = await queue().findOne({ served_by: userId, status: 'serving' }, { projection: { queue_number: 1 } });
+    if (own) {
+      res.json({ success: false, message: `${leftHere.queue_number} is still being served at this window. Finish or transfer ${own.queue_number} before taking it over.` });
+      return;
+    }
+  }
+
   // Always clear any window this user already holds.
   for (const row of await sections().find({ kind, occupied_by: userId }).toArray()) {
     await sections().updateOne({ _id: row._id, occupied_by: userId }, { $set: { occupied_by: null, status: 0, updated_at: at } });
@@ -76,9 +90,31 @@ sectionsRouter.post('/sections/:kind/assign', async (req, res) => {
   const name = (await sections().findOne({ _id: id }))?.section_name ?? '';
   req.session.served_by = name;
   // A patient already being served follows the staffer to the new window on the wall.
-  await queue().updateMany({ served_by: userId, status: 'serving', department_id: { $in: await scopeDepartments(dept) } }, { $set: { section_id: sectionId } });
+  await queue().updateMany({ served_by: userId, status: 'serving', department_id: { $in: lane } }, { $set: { section_id: sectionId } });
   await recordSectionEvent({ kind, sectionId, sectionName: name, action: override ? 'override' : 'claimed', userId, operatorId: userId, oldStatus: 0, newStatus: 1, ip });
-  res.json({ success: true, section_name: name });
+
+  let tookOver: { queue_number: string; from: string | null } | null = null;
+  if (leftHere) {
+    try {
+      const moved = await queue().findOneAndUpdate(
+        { _id: leftHere._id, status: 'serving', served_by: leftHere.served_by, section_id: sectionId },
+        { $set: { served_by: userId } },
+        { returnDocument: 'after' },
+      );
+      if (moved) {
+        await logQueueAction(ip, moved._id, moved.queue_number, moved.department_id, userId, 'taken_over', null, 'serving', 'serving');
+        queueUpdated(moved.department_id);
+        const previous = leftHere.served_by ? (await staffNames([leftHere.served_by]))[leftHere.served_by] : undefined;
+        tookOver = { queue_number: moved.queue_number, from: previous ?? null };
+      }
+    } catch (error) {
+      // The unique serving index: this staffer picked up a patient meanwhile.
+      if (!isDuplicateKey(error)) {
+        throw error;
+      }
+    }
+  }
+  res.json({ success: true, section_name: name, took_over: tookOver });
 });
 
 /** Kiosk mode: this login only hands out tickets. */

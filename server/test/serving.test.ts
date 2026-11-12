@@ -514,6 +514,50 @@ describe('unattended patients (staffer signed out mid-serve)', () => {
     expect((await second.get('/api/queue?department_id=15')).body.serving_queue_number).toBe('R-001');
   });
 
+  it('hands a patient left at a window to whoever takes that window', async () => {
+    const a = await makeUser('wa1', 15);
+    const b = await makeUser('wa2', 15);
+    const left = await seedRow(15, 'R-001', { secondsAgo: 300 });
+    await seedRow(15, 'R-002', { secondsAgo: 200 });
+    const first = await loggedIn('wa1');
+    await first.post('/api/sections/waiting/assign', { section_id: 1 });
+    await first.post('/api/serve-next', { department_id: 15 });
+    await first.post('/api/logout');
+
+    const second = await loggedIn('wa2');
+    expect((await second.post('/api/sections/waiting/assign', { section_id: 1 })).body).toMatchObject({ success: true, took_over: { queue_number: 'R-001', from: 'wa1 Tester' } });
+    expect(await row(left)).toMatchObject({ status: 'serving', served_by: b, section_id: 1 });
+    expect(await queueLog().countDocuments({ queue_id: left, action: 'taken_over', user_id: b })).toBe(1);
+    expect((await second.post('/api/serve-next', { department_id: 15 })).body.message).toBe('Finish or transfer R-001 before serving another patient.');
+    const wall = (await (await client()).get('/api/live-serving?ids=15')).body[0].serving;
+    expect(wall.find((w: { section: string }) => w.section === 'Waiting Area 1')).toMatchObject({ queue_number: 'R-001', staff: 'wa2 Tester' });
+
+    const back = await loggedIn('wa1');
+    await back.post('/api/sections/waiting/assign', { section_id: 2 });
+    expect((await back.get('/api/queue?department_id=15')).body.serving_queue_number).toBeNull();
+    expect((await back.post('/api/serve-next', { department_id: 15 })).body.queue_number).toBe('R-002');
+    expect(await queue().countDocuments({ served_by: a, status: 'serving' })).toBe(1);
+  });
+
+  it('will not hand over a window’s patient to a staffer still serving their own', async () => {
+    await makeUser('wa1', 15);
+    await makeUser('wa2', 15);
+    await seedRow(15, 'R-001', { secondsAgo: 300 });
+    await seedRow(15, 'R-002', { secondsAgo: 200 });
+    const first = await loggedIn('wa1');
+    await first.post('/api/sections/waiting/assign', { section_id: 1 });
+    await first.post('/api/serve-next', { department_id: 15 });
+    await first.post('/api/logout');
+    const second = await loggedIn('wa2');
+    await second.post('/api/sections/waiting/assign', { section_id: 2 });
+    await second.post('/api/serve-next', { department_id: 15 });
+    expect((await second.post('/api/sections/waiting/assign', { section_id: 1 })).body).toMatchObject({
+      success: false,
+      message: 'R-001 is still being served at this window. Finish or transfer R-002 before taking it over.',
+    });
+    expect((await sections().findOne({ _id: 'waiting:2' }))!.occupied_by).not.toBeNull();
+  });
+
   it('returns an unattended patient to the queue in their original place', async () => {
     await makeUser('doc1', 1);
     await makeUser('doc2', 1);

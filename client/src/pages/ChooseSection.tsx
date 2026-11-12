@@ -45,6 +45,9 @@ export function ChooseSection() {
       reload();
       return;
     }
+    if (result.took_over) {
+      toast(`You are now serving ${result.took_over.queue_number}${result.took_over.from ? `, left at this window by ${result.took_over.from}` : ''}. Finish or transfer them first.`, 'success');
+    }
     navigate('/');
   };
 
