@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import type { SessionData } from 'express-session';
 import { users } from '../db';
 
@@ -72,6 +73,21 @@ export async function sessionStillAuthorized(session: Partial<SessionData>): Pro
 /** Sign the account out everywhere: every existing session is refused from now on and the device lock is dropped. */
 export async function revokeSessions(userId: number): Promise<void> {
   await users().updateOne({ _id: userId }, { $set: { login_token: null, last_active: null, sessions_revoked_at: new Date() } });
+}
+
+/**
+ * After a password change: sign the account out on every other device while
+ * this session stays signed in (fresh sign-in time, and a new device token
+ * for accounts under the single-device lock).
+ */
+export async function revokeOtherSessions(session: Partial<SessionData>, userId: number): Promise<void> {
+  await revokeSessions(userId);
+  session.logged_in_at = Date.now();
+  if (session.login_token) {
+    const token = randomBytes(32).toString('hex');
+    session.login_token = token;
+    await registerLoginToken(userId, token);
+  }
 }
 
 /** Admin force-logout. */

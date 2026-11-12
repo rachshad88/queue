@@ -161,6 +161,14 @@ describe('windows (admission and waiting)', () => {
     expect((await sections().findOne({ _id: 'admission:3' }))!.status).toBe(1);
   });
 
+  it('keeps other departments off the windows', async () => {
+    await makeUser('doc1', 1);
+    const c = await loggedIn('doc1');
+    expect((await c.post('/api/sections/admission/assign', { section_id: 2 })).status).toBe(403);
+    expect((await c.post('/api/sections/waiting/assign', { section_id: 1, override: true })).status).toBe(403);
+    expect((await sections().findOne({ _id: 'admission:2' }))!.occupied_by).toBeNull();
+  });
+
   it('hides the roster from other departments', async () => {
     await makeUser('doc1', 1);
     expect((await (await loggedIn('doc1')).get('/api/sections/admission')).status).toBe(403);

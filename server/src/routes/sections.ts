@@ -36,8 +36,10 @@ sectionsRouter.post('/sections/:kind/assign', async (req, res) => {
   }
   const dept = deptForKind(kind);
   const override = !!req.body?.override;
-  if (override && (req.session.department_id ?? 0) !== dept) {
-    res.status(400).json({ success: false, message: 'Invalid request' });
+  const ownDepartment = (req.session.department_id ?? 0) === dept;
+  // Only that department's staff work its windows (a superadmin may claim one; overriding stays department-only).
+  if (!ownDepartment && (override || !req.session.is_superadmin)) {
+    res.status(403).json({ success: false, message: 'Access denied' });
     return;
   }
   const ip = clientIp(req);

@@ -5,7 +5,7 @@ import { config } from '../config';
 import { departments, isDuplicateKey, nextId, queue, queueLog, sections, users, type DepartmentDoc, type UserDoc } from '../db';
 import { requireAdmin, throttle, userKey } from '../middleware/auth';
 import { queueUpdated } from '../realtime';
-import { revokeSessions } from '../services/singleLogin';
+import { revokeOtherSessions, revokeSessions } from '../services/singleLogin';
 import { releaseSectionsForUser } from '../services/stations';
 import { minutesAgo } from '../time';
 import { clientIp, contains, escapeRegex, num, paginate, sortDepartments, str, trimmed } from '../util';
@@ -255,13 +255,19 @@ adminRouter.put('/users/:id', async (req, res) => {
     ((set.usertype !== undefined && set.usertype !== before.usertype) ||
       (set.department_id !== undefined && set.department_id !== before.department_id) ||
       (set.status !== undefined && set.status !== before.status));
-  if (accessChanged) {
+  const isSelf = id === req.session.user_id;
+  const passwordChanged = set.password !== undefined;
+  // A new password must lock out every session opened with the old one.
+  const signedOut = accessChanged || (passwordChanged && !isSelf);
+  if (signedOut) {
     await signOutEverywhere(id, clientIp(req));
+  } else if (passwordChanged && isSelf) {
+    await revokeOtherSessions(req.session, id);
   }
-  if (id === req.session.user_id) {
+  if (isSelf) {
     req.session.username = username;
   }
-  res.json({ success: true, message: accessChanged ? 'User updated and signed out so the change applies now.' : 'User updated.' });
+  res.json({ success: true, message: signedOut ? 'User updated and signed out so the change applies now.' : 'User updated.' });
 });
 
 type UserOp = 'delete' | 'activate' | 'deactivate';
@@ -428,6 +434,7 @@ adminRouter.post('/update-password', throttle('password-update', config.throttle
     return;
   }
   await users().updateOne({ _id: userId }, { $set: { password: await hash(newPassword) } });
+  await revokeOtherSessions(req.session, userId);
   req.session.default_pw = false;
   res.json({ success: true });
 });

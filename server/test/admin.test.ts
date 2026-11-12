@@ -196,6 +196,31 @@ describe('user management', () => {
     expect((await (await client()).login('doc1', ' spaced pw ')).body.success).toBe(true);
   });
 
+  it('signs out every other session when a password changes, and keeps the one that changed it', async () => {
+    await makeUser('adm', 1, 'admin');
+    const elsewhere = await loggedIn('adm');
+    const here = await loggedIn('adm');
+    expect((await here.post('/api/update-password', { old_password: PASSWORD, new_password: 'N3w-pass!9' })).body.success).toBe(true);
+    expect((await elsewhere.get('/api/users')).status).toBe(401);
+    expect((await here.get('/api/users')).status).toBe(200);
+
+    await makeUser('doc1', 1);
+    const staff = await loggedIn('doc1');
+    expect((await staff.post('/api/update-password', { old_password: PASSWORD, new_password: 'N3w-pass!9' })).body.success).toBe(true);
+    expect((await staff.get('/api/console')).status).toBe(200);
+  });
+
+  it('signs a user out when an admin resets their password', async () => {
+    await makeUser('adm', 1, 'admin');
+    const id = await makeUser('lab1', 5);
+    const staff = await loggedIn('lab1');
+    const admin = await loggedIn('adm');
+    const reset = await admin.put(`/api/users/${id}`, { username: 'lab1', firstname: 'lab1', lastname: 'Tester', usertype: 'staff', department: 5, password: 'Other-pass!77' });
+    expect(reset.body).toMatchObject({ success: true, message: 'User updated and signed out so the change applies now.' });
+    expect((await staff.get('/api/console')).status).toBe(401);
+    expect((await admin.get('/api/users')).status).toBe(200);
+  });
+
   it('edits the signed-in account and refuses a taken username', async () => {
     await makeUser('doc1', 1);
     await makeUser('doc2', 1);
