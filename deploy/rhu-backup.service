@@ -1,11 +1,11 @@
-# Adjust WorkingDirectory, EnvironmentFile and User to match where the app is installed.
+# Nightly backup: write a new archive, restore-test it, then delete older ones
+# (BACKUP_KEEP in .env). The app reads .env itself from WorkingDirectory.
 [Unit]
 Description=RHU Queue MongoDB backup
+After=mongod.service
 
 [Service]
 Type=oneshot
-User=www-data
-WorkingDirectory=/home/user/queue-ts
-EnvironmentFile=/home/user/queue-ts/.env
-ExecStart=/usr/bin/npm run backup -- --action=backup
-ExecStartPost=/usr/bin/npm run backup -- --action=prune
+User=root
+WorkingDirectory=/home/user/queue v2
+ExecStart=/usr/bin/npm run backup -- --action=nightly

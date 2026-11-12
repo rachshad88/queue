@@ -2,7 +2,7 @@
 Description=Nightly RHU Queue MongoDB backup
 
 [Timer]
-OnCalendar=*-*-* 02:00:00
+OnCalendar=*-*-* 02:00:00 Asia/Manila
 Persistent=true
 
 [Install]
