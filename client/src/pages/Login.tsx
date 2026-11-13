@@ -5,7 +5,8 @@ import { api } from '../api';
 import { beginSession, useSession, type SessionUser } from '../auth';
 import { prefetchFor } from '../prefetch';
 import { OfflineBanner } from '../components/OfflineBanner';
-import { LandingJourney, useScrollMotion, Walker } from './LoginJourney';
+import { LandingJourney, SoundToggle, useScrollMotion, Walker } from './LoginJourney';
+import { play } from '../sfx';
 
 const REASONS: Record<string, string> = {
   another_device: 'You were signed out because this account signed in on another device.',
@@ -252,9 +253,11 @@ export function Login() {
     event.preventDefault();
     setBusy(true);
     setError('');
+    play('start');
     const result = await api('/login', { body: { username, password }, quiet401: true });
     if (!result.success) {
       setError(result.message ?? 'Could not sign in.');
+      play('error');
       setBusy(false);
       return;
     }
@@ -268,10 +271,12 @@ export function Login() {
     const wait = (ms: number): Promise<void> => new Promise((resolve) => window.setTimeout(resolve, ms));
     if (!reducedMotion) {
       setBoosting(true);
+      play('boost');
       await wait(1200);
     }
     setBoosting(false);
     setArrived(true);
+    play('arrive');
     await wait(reducedMotion ? 700 : 1800);
     await refresh();
     setBusy(false);
@@ -303,6 +308,7 @@ export function Login() {
           <button type="button" onClick={() => scrollToId('services')}>Stages</button>
         </nav>
         <div className="arcade-nav-actions">
+          <SoundToggle />
           <a className="arcade-btn arcade-btn-ghost" href={`${BASE}/live`}>Live</a>
           <button type="button" className="arcade-btn" onClick={goToSignIn}>Sign in</button>
         </div>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
 import { BASE } from '../base';
+import { play, setSoundEnabled, useSoundEnabled, type SoundName } from '../sfx';
 
 /*
  * The landing page below the hero: a playable-feeling scroll.
@@ -110,6 +111,7 @@ const SPEAKER = [
   'KGGGGGGGGGGK..', 'KGGKKGGGGGGK..', 'KKKK.KGGGGGK..', '......KKGGGK..', '........KKGK..', '..........KK..',
 ];
 const SPEAKER_PALETTE = { K: INK, G: '#ffd84a' };
+const TOGGLE_PALETTE = { K: INK, G: '#ffffff' };
 const HOUSE = [
   '.......KK.......', '.....KKRRKK.....', '...KKRRRRRRKK...', '.KKRRRRRRRRRRKK.', 'KRRRRRRRRRRRRRRK', 'KKKKKKKKKKKKKKKK',
   '.KWWWWWWWWWWWWK.', '.KWYYWWWWWWYYWK.', '.KWYYWWDDWWYYWK.', '.KWWWWWDDWWWWWK.', '.KWWWWWDDWWWWWK.', '.KWWWWWDDWWWWWK.',
@@ -230,6 +232,8 @@ const CHECKPOINTS = [0.1, 0.37, 0.64, 0.9];
 const COINS = Array.from({ length: 18 }, (_, k) => (k + 0.5) / 18).filter((q) => CHECKPOINTS.every((c) => Math.abs(c - q) > 0.035));
 /** The walker stands at 34% of the screen; the track scrolls 3 screens past it. */
 const trackLeft = (q: number): string => `${34 + 300 * q}cqw`;
+/** Kiosk prints, waiting-area level-up, the call chime, the clinic door. */
+const LEVEL_SOUNDS: SoundName[] = ['print', 'level', 'call', 'door'];
 
 const LANDMARKS = [
   <div key="kiosk" className="prop prop-kiosk">
@@ -281,6 +285,21 @@ function VisitRun() {
     setCoins(COINS.filter((q) => progress >= q).length);
     setCleared(progress >= 0.97);
   }, !reduced);
+
+  // Sounds only on the way forward; scrolling back up stays quiet.
+  const heard = useRef({ level: -1, coins: 0, cleared: false });
+  useEffect(() => {
+    const last = heard.current;
+    if (level > last.level && level >= 0) {
+      play(LEVEL_SOUNDS[level], 200);
+    } else if (coins > last.coins) {
+      play('coin', 70);
+    }
+    if (cleared && !last.cleared) {
+      play('clear');
+    }
+    heard.current = { level, coins, cleared };
+  }, [level, coins, cleared]);
 
   const intro = 'Scroll down to walk a patient from the gate to the doctor.';
   const message = level < 0 ? intro : cleared ? 'Stage clear! The same ticket now takes you to the laboratory, pharmacy or any other service.' : STEPS[level].text;
@@ -410,6 +429,7 @@ function PlayerSelect() {
   }, [demo, inView, reduced]);
 
   const choose = (index: number): void => {
+    play(index === picked ? 'confirm' : 'select');
     setDemo(false);
     setPicked(index);
   };
@@ -522,6 +542,13 @@ function WorldMap({ names, services }: { names: string[]; services: LiveConfig |
   const columns = useColumns(gridRef, names.length > 0);
   const scoresInView = useInView(scoresRef, 0.4);
   const [here, setHere] = useState(0);
+  const lastHere = useRef(0);
+  useEffect(() => {
+    if (here > lastHere.current) {
+      play('hop', 90);
+    }
+    lastHere.current = here;
+  }, [here]);
 
   // The patient hops one stage further for each slice of the map that scrolls past.
   useScrollFrame(() => {
@@ -603,6 +630,11 @@ function ContinueScreen({ onSignIn }: { onSignIn: () => void }) {
     const timer = window.setTimeout(() => setCount((n) => (n <= -1 ? 9 : n - 1)), count < 0 ? 2600 : 900);
     return () => window.clearTimeout(timer);
   }, [inView, count, reduced]);
+  useEffect(() => {
+    if (inView && !reduced) {
+      play(count < 0 ? 'over' : count === 9 ? 'coin' : 'tick', 300);
+    }
+  }, [count, inView, reduced]);
 
   return (
     <section className="cont" ref={ref}>
@@ -620,6 +652,29 @@ function ContinueScreen({ onSignIn }: { onSignIn: () => void }) {
         </div>
       </div>
     </section>
+  );
+}
+
+/** Sound on/off for the landing page. Turning it on is the click browsers need before any audio can play. */
+export function SoundToggle() {
+  const on = useSoundEnabled();
+  return (
+    <button
+      type="button"
+      className={`arcade-sound${on ? ' on' : ''}`}
+      aria-pressed={on}
+      aria-label={on ? 'Sound effects on' : 'Sound effects off'}
+      title={on ? 'Sound on' : 'Sound off'}
+      onClick={() => {
+        setSoundEnabled(!on);
+        if (!on) {
+          play('confirm');
+        }
+      }}
+    >
+      <PixelArt art={SPEAKER} palette={TOGGLE_PALETTE} />
+      <span aria-hidden="true">{on ? 'On' : 'Off'}</span>
+    </button>
   );
 }
 

@@ -989,6 +989,22 @@ tr.is-unattended td { background: var(--amber-soft); }
 .arcade-nav-runner { position: absolute; left: clamp(1rem, 4vw, 3rem); right: clamp(1rem, 4vw, 3rem); bottom: 0; height: 14px; pointer-events: none; }
 .arcade-nav-runner .walker { position: absolute; bottom: 0; height: 14px; left: calc(var(--page-p, 0) * (100% - 11px)); }
 
+/* Sound on/off in the nav. */
+.arcade-sound {
+  display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.5rem 0.6rem; font-family: var(--a-pixel); font-size: 0.55rem; text-transform: uppercase;
+  color: #fff; background: rgba(18, 5, 30, 0.35); border: 0; border-radius: 4px; cursor: pointer; box-shadow: 0 0 0 3px #fff, 0 4px 0 3px #12051e;
+}
+.arcade-sound svg { width: 20px; height: auto; opacity: 0.55; }
+.arcade-sound.on { color: #12051e; background: var(--a-yellow); }
+.arcade-sound.on svg { opacity: 1; }
+.arcade-sound:active { transform: translateY(3px); box-shadow: 0 0 0 3px #fff; }
+.arcade-sound:focus-visible { outline: 3px solid #fff; outline-offset: 4px; }
+@media (max-width: 480px) {
+  .arcade-sound span { display: none; }
+  .arcade-nav-actions { gap: 0.7rem; }
+  .arcade-nav-actions .arcade-btn { white-space: nowrap; }
+}
+
 /* 1. World 1: a sticky side-scroller. Every size inside is in --u (1% of the stage height). */
 .run { position: relative; height: 460vh; background: #3b3b44; }
 .run-stage {
