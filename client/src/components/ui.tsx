@@ -16,6 +16,7 @@ const paths: Record<string, string> = {
   speaker: 'M11 5L6 9H2v6h4l5 4V5zM15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14',
   monitor: 'M3 4h18v12H3zM8 20h8M12 16v4',
   menu: 'M3 6h18M3 12h18M3 18h18',
+  chevron: 'M6 9l6 6 6-6',
 };
 
 export function Icon({ name, size = 18 }: { name: keyof typeof paths | string; size?: number }) {
