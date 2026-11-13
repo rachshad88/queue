@@ -82,6 +82,24 @@ export async function markSectionOccupied(sectionId: number, userId: number, kin
   if (before && !before.occupied_by) {
     await recordSectionEvent({ kind, sectionId, sectionName: before.section_name, action: 'claimed', userId, operatorId: userId, oldStatus: 0, newStatus: 1, reason: 'serve', ip });
   }
+  if (before) {
+    await releaseOtherSections(userId, sectionKey(kind, sectionId), ip);
+  }
+}
+
+/**
+ * One operator, one window. A superadmin serving through a takeover window
+ * would otherwise keep the window they held before, and walls would show
+ * their patient at both.
+ */
+async function releaseOtherSections(userId: number, keepId: string, ip: string): Promise<void> {
+  const others = await sections().find({ occupied_by: userId, _id: { $ne: keepId } }).toArray();
+  for (const row of others) {
+    const result = await sections().updateOne({ _id: row._id, occupied_by: userId }, { $set: { occupied_by: null, status: 0, updated_at: new Date() } });
+    if (result.modifiedCount === 1) {
+      await recordSectionEvent({ kind: row.kind, sectionId: row.section_id, sectionName: row.section_name, action: 'released', userId, operatorId: userId, oldStatus: row.status, newStatus: 0, reason: 'moved_window', ip });
+    }
+  }
 }
 
 /** Release windows abandoned more than `minutes` ago. */

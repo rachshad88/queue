@@ -247,6 +247,21 @@ describe('windows (admission and waiting)', () => {
     expect(switched.body).toMatchObject({ success: true, sectioned: true, active_window: 'Admission 2' });
     expect((await admin.post('/api/serve-next', { department_id: 3 })).body.queue_number).toBe('R-001');
   });
+
+  it('keeps a superadmin on one window when serving from a new takeover window', async () => {
+    await seedRow(15, 'R-001');
+    await seedRow(15, 'R-002');
+    const admin = await loggedIn('superadmin');
+    await admin.post('/api/switch-department', { department_id: 15, section_id: 1 });
+    expect((await admin.post('/api/serve-next', { department_id: 15 })).body.queue_number).toBe('R-001');
+    expect((await admin.post('/api/finish', { department_id: 15 })).body.success).toBe(true);
+    await admin.post('/api/switch-department', { department_id: 15, section_id: 2 });
+    expect((await admin.post('/api/serve-next', { department_id: 15 })).body.queue_number).toBe('R-002');
+    const held = await sections().find({ occupied_by: 1 }).toArray();
+    expect(held.map((w) => w.section_name)).toEqual(['Waiting Area 2']);
+    const wall = (await (await client()).get('/api/live-serving?ids=15')).body[0].serving;
+    expect(wall.filter((w: { queue_number: string }) => w.queue_number !== '-').map((w: { section: string }) => w.section)).toEqual(['Waiting Area 2']);
+  });
 });
 
 describe('row actions, finish and repeat', () => {
