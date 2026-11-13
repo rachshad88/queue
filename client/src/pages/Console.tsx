@@ -1,11 +1,13 @@
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { useSession } from '../auth';
+import { apiQuery, consoleQueueQuery } from '../queryClient';
 import { Layout } from '../components/Layout';
-import { CategoryBadge, Modal, PasswordPrompt, StatusBadge, useToast } from '../components/ui';
+import { CategoryBadge, Icon, Modal, PasswordPrompt, StatusBadge, useToast } from '../components/ui';
 import { formatDateTime } from '../format';
-import { useDepartmentEvents } from '../socket';
+import { useDepartmentEvents, useServerOnline } from '../socket';
 
 interface Row {
   id: number;
@@ -47,12 +49,15 @@ function shortestIds(targets: (Target & { disabled: boolean })[]): number[] {
 export function Console() {
   const { user, config, refresh } = useSession();
   const toast = useToast();
-  const [info, setInfo] = useState<Record<string, any> | null>(null);
-  const [q, setQ] = useState<Record<string, any> | null>(null);
+  // Console details come from the shared cache (saved on this device and
+  // prefetched at sign-in), so the page paints at once and refreshes behind.
+  const infoQuery = useQuery({ ...apiQuery<Record<string, any>>('/console'), staleTime: 0, refetchOnWindowFocus: false });
+  const info: Record<string, any> | null = infoQuery.data?.department_id !== undefined ? infoQuery.data : null;
   const [busy, setBusy] = useState(false);
+  /** No queue action can be decided without the server; buttons pause while offline. */
+  const locked = busy || !useServerOnline();
   const [transferTargets, setTransferTargets] = useState<Target[] | null>(null);
   const [approveRow, setApproveRow] = useState<Row | null>(null);
-  const [pool, setPool] = useState<Record<string, any> | null>(null);
   const [poolPick, setPoolPick] = useState<{ department_id: number; queue_id: number; queue_number: string } | null>(null);
   const [returnCode, setReturnCode] = useState('');
   const [changePw, setChangePw] = useState(false);
@@ -61,41 +66,36 @@ export function Console() {
 
   const deptId: number = info?.department_id ?? user?.department_id ?? 0;
 
+  const { refetch: refetchInfo } = infoQuery;
   const loadInfo = useCallback(async () => {
-    const data = await api('/console');
-    if (data.department_id !== undefined) {
-      setInfo(data);
-      setTakeover({ department_id: data.department_id, section_id: data.takeover_section_id ?? 0 });
-      if (data.show_change_pw) {
-        setChangePw(true);
-      }
-    }
-  }, []);
-
-  const loadQueue = useCallback(async () => {
-    if (!deptId) {
+    await refetchInfo();
+  }, [refetchInfo]);
+  // Each fresh copy resets the takeover picker and may ask for a password change.
+  useEffect(() => {
+    if (!info) {
       return;
     }
-    const data = await api(`/queue?department_id=${deptId}`);
-    if (data.success) {
-      setQ(data);
+    setTakeover({ department_id: info.department_id, section_id: info.takeover_section_id ?? 0 });
+    if (info.show_change_pw) {
+      setChangePw(true);
     }
-    if (info?.in_pool_clinic) {
-      const p = await api('/pool-waiting');
-      setPool(p.success ? p : null);
-    }
-  }, [deptId, info?.in_pool_clinic]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [infoQuery.dataUpdatedAt]);
 
-  useEffect(() => {
-    void loadInfo();
-  }, [loadInfo]);
-  useEffect(() => {
-    void loadQueue();
-    const timer = window.setInterval(() => void loadQueue(), 10000);
-    return () => window.clearInterval(timer);
-  }, [loadQueue]);
+  const queryClient = useQueryClient();
+  const inPool = !!info?.in_pool_clinic;
+  /** The department queue (and the shared clinic pool), cached per department and refreshed by live events. */
+  const queueQuery = useQuery({ ...consoleQueueQuery(deptId, inPool), enabled: deptId > 0 });
+  const q: Record<string, any> | null = queueQuery.data?.q ?? null;
+  const pool: Record<string, any> | null = queueQuery.data?.pool ?? null;
+  const { refetch } = queueQuery;
+  const loadQueue = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
+
   useDepartmentEvents(deptId ? [deptId, ...(q?.dental_department_id && deptId === config.waiting_dept_id ? [q.dental_department_id] : [])] : [], 'controller', {
     'queue-updated': () => void loadQueue(),
+    connect: () => void loadQueue(),
   });
 
   /** Run one console action, toast its outcome and refresh. */
@@ -129,7 +129,7 @@ export function Console() {
       return;
     }
     toast(`Now working ${result.department_name}${result.active_window ? `, ${result.active_window}` : ''}.`, 'success');
-    setQ(null);
+    queryClient.removeQueries({ queryKey: ['console-queue'] });
     await refresh();
     await loadInfo();
   };
@@ -226,19 +226,24 @@ export function Console() {
         </div>
 
         <div className="actions-bar">
-          <button className="btn btn-primary btn-lg" disabled={busy || !!serving} title={finishFirstHint} onClick={() => void act('/serve-next', { department_id: deptId }, (r) => (r.message ? r.message : `Now serving ${r.queue_number}${r.pool ? ' (from another clinic)' : ''}.`))}>
+          <button className="btn btn-primary btn-lg" disabled={locked || !!serving} title={finishFirstHint} onClick={() => void act('/serve-next', { department_id: deptId }, (r) => (r.message ? r.message : `Now serving ${r.queue_number}${r.pool ? ' (from another clinic)' : ''}.`))}>
+            <Icon name="play" size={20} />
             Serve next
           </button>
-          <button className="btn btn-lg" disabled={busy || !serving} onClick={() => void act('/repeat-call', { department_id: deptId, queue_number: serving, department_name: q?.active_window ?? info.department_name }, () => `Repeating the call for ${serving}.`)}>
+          <button className="btn btn-lg" disabled={locked || !serving} onClick={() => void act('/repeat-call', { department_id: deptId, queue_number: serving, department_name: q?.active_window ?? info.department_name }, () => `Repeating the call for ${serving}.`)}>
+            <Icon name="speaker" size={20} />
             Repeat call
           </button>
-          <button className="btn btn-lg" disabled={busy || !serving} onClick={() => void act('/queue-action', { action: 'hold', queue_id: q?.serving_row_id }, () => `${serving} is on hold.`)}>
+          <button className="btn btn-lg" disabled={locked || !serving} onClick={() => void act('/queue-action', { action: 'hold', queue_id: q?.serving_row_id }, () => `${serving} is on hold.`)}>
+            <Icon name="pause" size={20} />
             Hold
           </button>
-          <button className="btn btn-lg" disabled={busy || !serving} onClick={() => void openTransfer()}>
+          <button className="btn btn-lg" disabled={locked || !serving} onClick={() => void openTransfer()}>
+            <Icon name="transfer" size={20} />
             Transfer
           </button>
-          <button className="btn btn-lg" disabled={busy || !serving} onClick={() => void act('/finish', { department_id: deptId }, () => `${serving} finished.`)}>
+          <button className="btn btn-lg" disabled={locked || !serving} onClick={() => void act('/finish', { department_id: deptId }, () => `${serving} finished.`)}>
+            <Icon name="check" size={20} />
             Finished
           </button>
         </div>
@@ -257,7 +262,7 @@ export function Console() {
               <span>Returning patient: return code on the ticket</span>
               <input value={returnCode} onChange={(e) => setReturnCode(e.target.value.toUpperCase())} maxLength={10} placeholder="e.g. X7K2" />
             </label>
-            <button className="btn" disabled={busy || returnCode.trim() === ''}>Re-queue as priority</button>
+            <button className="btn" disabled={locked || returnCode.trim() === ''}>Re-queue as priority</button>
           </form>
         )}
 
@@ -308,10 +313,10 @@ export function Console() {
                     <td className="right nowrap">
                       {row.unattended && (
                         <>
-                          <button className="btn btn-sm" disabled={busy || !!serving} title={finishFirstHint} onClick={() => void act('/queue-action', { action: 'takeover', queue_id: row.id })}>Take over</button>{' '}
+                          <button className="btn btn-sm" disabled={locked || !!serving} title={finishFirstHint} onClick={() => void act('/queue-action', { action: 'takeover', queue_id: row.id })}>Take over</button>{' '}
                           <button
                             className="btn btn-sm"
-                            disabled={busy}
+                            disabled={locked}
                             onClick={() => window.confirm(`Return ${row.queue_number} to the queue? They keep their original place in line.`) && void act('/queue-action', { action: 'return', queue_id: row.id })}
                           >
                             Return to queue
@@ -320,17 +325,17 @@ export function Console() {
                       )}
                       {row.status === 'waiting' && (
                         <>
-                          <button className="btn btn-sm" disabled={busy || !!serving} title={finishFirstHint} onClick={() => setApproveRow(row)}>Serve</button>{' '}
-                          <button className="btn btn-sm" disabled={busy} onClick={() => void act('/queue-action', { action: 'hold', queue_id: row.id })}>Hold</button>{' '}
+                          <button className="btn btn-sm" disabled={locked || !!serving} title={finishFirstHint} onClick={() => setApproveRow(row)}>Serve</button>{' '}
+                          <button className="btn btn-sm" disabled={locked} onClick={() => void act('/queue-action', { action: 'hold', queue_id: row.id })}>Hold</button>{' '}
                         </>
                       )}
                       {row.status === 'hold' && (
                         <>
-                          <button className="btn btn-sm" disabled={busy} onClick={() => void act('/queue-action', { action: 'unhold', queue_id: row.id })}>Unhold</button>{' '}
+                          <button className="btn btn-sm" disabled={locked} onClick={() => void act('/queue-action', { action: 'unhold', queue_id: row.id })}>Unhold</button>{' '}
                         </>
                       )}
                       {(row.status === 'waiting' || row.status === 'hold') && (
-                        <button className="btn btn-sm" disabled={busy} onClick={() => window.confirm(`Remove ${row.queue_number} from the queue?`) && void act('/queue-action', { action: 'remove', queue_id: row.id })}>Remove</button>
+                        <button className="btn btn-sm" disabled={locked} onClick={() => window.confirm(`Remove ${row.queue_number} from the queue?`) && void act('/queue-action', { action: 'remove', queue_id: row.id })}>Remove</button>
                       )}
                     </td>
                   </tr>

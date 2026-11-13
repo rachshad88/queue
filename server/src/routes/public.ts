@@ -5,6 +5,7 @@ import { config } from '../config';
 import { departments, queue, sections, users, type Category, type DepartmentDoc, type QueueDoc } from '../db';
 import { isRevoked, throttle } from '../middleware/auth';
 import { queueUpdated } from '../realtime';
+import { cached, LIVE_CONFIG_KEY, queueGeneration } from '../sharedCache';
 import { createTicket } from '../services/numbers';
 import { SERVE_ORDER } from '../services/pool';
 import { returningIds } from '../services/queueLog';
@@ -249,6 +250,15 @@ publicRouter.get('/display', async (req, res) => {
 publicRouter.get('/live-serving', async (req, res) => {
   const ids = [...new Set(str(req.query.ids).split(',').map((v) => num(v)).filter((id) => id > 0))].slice(0, 12);
   const dayStart = manilaDayStart();
+  // Every wall polls this; a short shared entry per day, queue change and
+  // department set means a room full of monitors costs one set of queries.
+  const key = `live-serving:${dayStart.getTime()}:${queueGeneration()}:${ids.join(',')}`;
+  const result = await cached(key, 3, () => liveServing(ids, dayStart));
+  res.set({ 'Cache-Control': 'no-store, no-cache, must-revalidate', Pragma: 'no-cache', Expires: '0' });
+  res.json(result);
+});
+
+async function liveServing(ids: number[], dayStart: Date): Promise<Record<string, unknown>[]> {
   const result: Record<string, unknown>[] = [];
 
   for (const deptId of ids) {
@@ -285,20 +295,22 @@ publicRouter.get('/live-serving', async (req, res) => {
       waiting_total: await queue().countDocuments({ department_id: deptId, status: 'waiting', arrival_at: { $gte: dayStart } }),
     });
   }
-
-  res.set({ 'Cache-Control': 'no-store, no-cache, must-revalidate', Pragma: 'no-cache', Expires: '0' });
-  res.json(result);
-});
+  return result;
+}
 
 /** What the wall monitor can show: active departments and the window names. */
 publicRouter.get('/live-config', async (_req, res) => {
-  const depts = sortDepartments((await departments().find().toArray()).filter((d) => !isInactive(d.status)));
-  const windows = await sections().find().sort({ section_id: 1 }).toArray();
-  res.json({
-    departments: depts.map((d) => ({ id: d._id, name: d.name })),
-    admission_sections: windows.filter((w) => w.kind === 'admission').map((w) => w.section_name),
-    waiting_sections: windows.filter((w) => w.kind === 'waiting').map((w) => w.section_name),
-  });
+  res.json(
+    await cached(LIVE_CONFIG_KEY, 300, async () => {
+      const depts = sortDepartments((await departments().find().toArray()).filter((d) => !isInactive(d.status)));
+      const windows = await sections().find().sort({ section_id: 1 }).toArray();
+      return {
+        departments: depts.map((d) => ({ id: d._id, name: d.name })),
+        admission_sections: windows.filter((w) => w.kind === 'admission').map((w) => w.section_name),
+        waiting_sections: windows.filter((w) => w.kind === 'waiting').map((w) => w.section_name),
+      };
+    }),
+  );
 });
 
 export const EXPECTED_VOICE_CLIPS: string[] = [

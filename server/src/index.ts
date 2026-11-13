@@ -3,12 +3,14 @@ import { createApp } from './app';
 import { config } from './config';
 import { connect, disconnect } from './db';
 import { attachRealtime } from './realtime';
+import { connectCache } from './sharedCache';
 
 async function main(): Promise<void> {
   if (config.env === 'production' && config.sessionSecret === 'change-me-in-production') {
     throw new Error('Set SESSION_SECRET before running in production.');
   }
   await connect();
+  await connectCache();
   const server = createServer(createApp());
   attachRealtime(server);
   server.on('error', (error: NodeJS.ErrnoException) => {

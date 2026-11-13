@@ -1,6 +1,30 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, setCsrf, setUnauthorizedHandler } from './api';
+import { queryClient } from './queryClient';
+import { useServerOnline } from './socket';
+
+const SNAPSHOT_KEY = 'rhuq-session';
+
+/** Last signed-in user and settings, so a reload while offline keeps the screen instead of bouncing to login. */
+function readSnapshot(): { user: SessionUser; config: QueueConfig } | null {
+  try {
+    return JSON.parse(localStorage.getItem(SNAPSHOT_KEY) ?? 'null');
+  } catch {
+    return null;
+  }
+}
+function writeSnapshot(value: { user: SessionUser; config: QueueConfig } | null): void {
+  try {
+    if (value) {
+      localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(value));
+    } else {
+      localStorage.removeItem(SNAPSHOT_KEY);
+    }
+  } catch {
+    // Storage unavailable: offline reloads just return to the login page.
+  }
+}
 
 export interface SessionUser {
   user_id: number;
@@ -29,24 +53,55 @@ interface SessionState {
 const DEFAULT_CONFIG: QueueConfig = { admission_dept_id: 3, waiting_dept_id: 15, pool_clinic_ids: [1, 2, 4] };
 const SessionContext = createContext<SessionState | null>(null);
 
+/**
+ * Record a fresh sign-in before the app switches to it, so data can be
+ * prefetched for this account. Another account's saved pages are dropped first.
+ */
+export function beginSession(user: SessionUser, config: QueueConfig = DEFAULT_CONFIG): void {
+  if (readSnapshot()?.user.user_id !== user.user_id) {
+    queryClient.clear();
+  }
+  writeSnapshot({ user, config });
+}
+
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const [ready, setReady] = useState(false);
-  const [user, setUser] = useState<SessionUser | null>(null);
-  const [config, setConfig] = useState<QueueConfig>(DEFAULT_CONFIG);
+  // Start from the last confirmed session so a reload paints at once; the
+  // /session check below corrects it (and the server checks every call anyway).
+  const [initial] = useState(readSnapshot);
+  const [ready, setReady] = useState(initial !== null);
+  const [user, setUser] = useState<SessionUser | null>(initial?.user ?? null);
+  const [config, setConfig] = useState<QueueConfig>(initial?.config ?? DEFAULT_CONFIG);
   const navigate = useNavigate();
   const leaving = useRef(false);
 
   const refresh = useCallback(async () => {
     const data = await api('/session');
+    if (data.offline) {
+      // The server is unreachable, not a sign-out: keep (or restore) who was here.
+      const snapshot = readSnapshot();
+      let kept: SessionUser | null = null;
+      setUser((current) => (kept = current ?? snapshot?.user ?? null));
+      if (snapshot?.config) {
+        setConfig(snapshot.config);
+      }
+      setReady(true);
+      return kept ?? snapshot?.user ?? null;
+    }
     if (data.csrf) {
       setCsrf(data.csrf);
     }
-    setUser(data.user ?? null);
+    const next = (data.user ?? null) as SessionUser | null;
+    // Never show one account's saved pages to the next person at this desk.
+    if ((readSnapshot()?.user.user_id ?? null) !== (next?.user_id ?? null)) {
+      queryClient.clear();
+    }
+    setUser(next);
     if (data.config) {
       setConfig(data.config);
     }
+    writeSnapshot(next ? { user: next, config: data.config ?? DEFAULT_CONFIG } : null);
     setReady(true);
-    return (data.user ?? null) as SessionUser | null;
+    return next;
   }, []);
 
   // Logout always goes through the server first so the operator's window is freed.
@@ -68,11 +123,23 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     void refresh();
   }, [refresh]);
 
+  // Back online: re-check the session, which also catches a sign-out that happened meanwhile.
+  const online = useServerOnline();
+  const wasOnline = useRef(online);
+  useEffect(() => {
+    if (online && !wasOnline.current) {
+      void refresh();
+    }
+    wasOnline.current = online;
+  }, [online, refresh]);
+
   useEffect(() => {
     setUnauthorizedHandler((reason) => {
       if (reason === 'another_device' || reason === 'revoked') {
         void logout(reason);
       } else if (reason === 'login') {
+        writeSnapshot(null);
+        queryClient.clear();
         setUser(null);
       }
     });

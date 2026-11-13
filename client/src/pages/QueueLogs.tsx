@@ -1,15 +1,17 @@
 import { useState } from 'react';
-import { api, query } from '../api';
+import { query } from '../api';
 import { Layout } from '../components/Layout';
-import { Pagination, useLoader } from '../components/ui';
+import { Pagination, useApi } from '../components/ui';
 import { formatDateTime } from '../format';
 
 const BLANK = { department: '', action: '', uid: '', from: '', to: '', q: '', page: 1 };
+/** What the page asks for when first opened (prefetched after sign-in). */
+export const QUEUE_LOGS_PATH = `/queue-logs${query(BLANK)}`;
 
 export function QueueLogs() {
   const [filters, setFilters] = useState(BLANK);
   const [search, setSearch] = useState('');
-  const { data } = useLoader(() => api(`/queue-logs${query(filters)}`), [filters]);
+  const { data, loading } = useApi(`/queue-logs${query(filters)}`);
   const change = (patch: Partial<typeof BLANK>): void => setFilters((f) => ({ ...f, ...patch, page: 1 }));
 
   return (
@@ -53,7 +55,7 @@ export function QueueLogs() {
           <table>
             <thead><tr><th>When</th><th>Queue number</th><th>Action</th><th>Change</th><th>Department</th><th>Operator</th><th>Device IP</th></tr></thead>
             <tbody>
-              {(data?.records ?? []).length === 0 && <tr><td colSpan={7} className="empty">No log entries for this filter.</td></tr>}
+              {!loading && (data?.records ?? []).length === 0 && <tr><td colSpan={7} className="empty">No log entries for this filter.</td></tr>}
               {(data?.records ?? []).map((r: Record<string, any>) => (
                 <tr key={r.id}>
                   <td className="nowrap">{formatDateTime(r.created_at)}</td>

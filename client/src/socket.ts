@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useSyncExternalStore } from 'react';
 import { io, type Socket } from 'socket.io-client';
 import { BASE } from './base';
 
@@ -9,9 +9,36 @@ function connection(): Socket {
   return socket;
 }
 
+/** Offline only after the first connection attempt fails, so pages do not flash a banner on load. */
+let online = true;
+const watchers = new Set<() => void>();
+function setOnline(next: boolean): void {
+  if (online !== next) {
+    online = next;
+    watchers.forEach((notify) => notify());
+  }
+}
+function watchConnection(notify: () => void): () => void {
+  const s = connection();
+  if (watchers.size === 0) {
+    s.on('connect', () => setOnline(true));
+    s.on('disconnect', () => setOnline(false));
+    s.on('connect_error', () => setOnline(false));
+    window.addEventListener('offline', () => setOnline(false));
+  }
+  watchers.add(notify);
+  return () => watchers.delete(notify);
+}
+
+/** Whether this screen can reach the queue server right now (live socket state). */
+export function useServerOnline(): boolean {
+  return useSyncExternalStore(watchConnection, () => online);
+}
+
 /**
  * Subscribe to live events for a set of departments. Handlers are read from a
- * ref, so they can close over fresh state without resubscribing.
+ * ref, so they can close over fresh state without resubscribing. A `connect`
+ * handler runs on every (re)connect, so pages can catch up on missed events.
  */
 export function useDepartmentEvents(depts: number[], page: 'live' | 'controller', handlers: Record<string, (payload: any) => void>): void {
   const latest = useRef(handlers);

@@ -1,14 +1,18 @@
 import { useState } from 'react';
-import { api, query } from '../api';
+import { query } from '../api';
 import { Layout } from '../components/Layout';
-import { useLoader } from '../components/ui';
+import { useApi } from '../components/ui';
 import { formatDateTime } from '../format';
+
+const DEFAULT_FILTERS = { department: '', search: '' };
+/** What the page asks for when first opened (prefetched after sign-in). */
+export const AUDIT_TRAIL_PATH = `/audit-trail${query(DEFAULT_FILTERS)}`;
 
 /** Follow one queue number through every action taken on it. */
 export function AuditTrail() {
-  const [filters, setFilters] = useState({ department: '', search: '' });
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [draft, setDraft] = useState(filters);
-  const { data, loading } = useLoader(() => api(`/audit-trail${query(filters)}`), [filters]);
+  const { data, loading } = useApi(`/audit-trail${query(filters)}`);
 
   return (
     <Layout title="Audit trail">

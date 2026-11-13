@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useSession } from './auth';
+import { prefetchFor } from './prefetch';
 import { Account } from './pages/Account';
 import { AuditTrail } from './pages/AuditTrail';
 import { Backup } from './pages/Backup';
@@ -34,7 +35,11 @@ function Protected({ gate = 'any', children }: { gate?: Gate; children: ReactNod
 }
 
 export function App() {
-  const { ready } = useSession();
+  const { ready, user } = useSession();
+  // Warm every screen this account can open, so each one paints from cache.
+  useEffect(() => {
+    prefetchFor(user);
+  }, [user?.user_id]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!ready) {
     return <div className="center-screen muted">Loading</div>;
   }

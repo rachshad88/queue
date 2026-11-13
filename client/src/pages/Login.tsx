@@ -2,7 +2,9 @@ import { BASE } from '../base';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
-import { useSession } from '../auth';
+import { beginSession, useSession, type SessionUser } from '../auth';
+import { prefetchFor } from '../prefetch';
+import { OfflineBanner } from '../components/OfflineBanner';
 
 const REASONS: Record<string, string> = {
   another_device: 'You were signed out because this account signed in on another device.',
@@ -208,6 +210,11 @@ export function Login() {
       return;
     }
     setDestination(result.destination ?? '/');
+    // Load the console and the other pages while the arrival animation plays.
+    if (result.user) {
+      beginSession(result.user as SessionUser, result.config);
+      prefetchFor(result.user as SessionUser, { now: true });
+    }
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const wait = (ms: number): Promise<void> => new Promise((resolve) => window.setTimeout(resolve, ms));
     if (!reducedMotion) {
@@ -232,6 +239,7 @@ export function Login() {
 
   return (
     <div className={`arcade${boosting ? ' arcade-boost' : ''}`}>
+      <OfflineBanner detail="Cannot reach the queue server. Sign-in will work again once it is back." />
       <div className="arcade-crt" aria-hidden="true" />
       {arrived && <Arrival />}
 

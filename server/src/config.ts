@@ -27,6 +27,8 @@ export const config = {
   /** Honor X-Forwarded-For when extracting the client IP (spoofable; off by default). */
   trustProxy: flag(process.env.TRUST_PROXY_HEADER, false),
   allowedOrigins: list(process.env.ALLOWED_ORIGINS, ''),
+  /** Optional Redis for response caching, e.g. redis://127.0.0.1:6379/1. Empty = no cache. */
+  redisUrl: isTest ? '' : (process.env.REDIS_URL ?? ''),
 
   // Department ids the queue rules key on (see seed script).
   admissionDeptId: int(process.env.ADMISSION_DEPT_ID, 3),

@@ -2,14 +2,14 @@ import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { BASE } from '../base';
 import { Layout } from '../components/Layout';
-import { PasswordPrompt, useLoader, useToast } from '../components/ui';
+import { PasswordPrompt, useApi, useToast } from '../components/ui';
 import { formatBytes, formatDateTime } from '../format';
 
 const STATE_TEXT: Record<string, string> = { ok: 'Backups are current', warn: 'Latest backup is getting old', critical: 'No recent backup' };
 
 export function Backup() {
   const toast = useToast();
-  const { data, reload } = useLoader(() => api('/backup'), []);
+  const { data, reload, loading } = useApi('/backup');
   const [job, setJob] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
@@ -82,7 +82,7 @@ export function Backup() {
             <table>
               <thead><tr><th>File</th><th>Taken</th><th>Size</th><th className="right">Actions</th></tr></thead>
               <tbody>
-                {backups.length === 0 && <tr><td colSpan={4} className="empty">No backups yet. Use "Back up now" to take the first one.</td></tr>}
+                {!loading && backups.length === 0 && <tr><td colSpan={4} className="empty">No backups yet. Use "Back up now" to take the first one.</td></tr>}
                 {backups.map((b) => (
                   <tr key={b.file}>
                     <td><strong>{b.file}</strong></td>
@@ -108,7 +108,7 @@ export function Backup() {
             <table>
               <thead><tr><th>Started</th><th>Action</th><th>Result</th><th>Details</th></tr></thead>
               <tbody>
-                {(data?.jobs ?? []).length === 0 && <tr><td colSpan={4} className="empty">No jobs have run from this page.</td></tr>}
+                {!loading && (data?.jobs ?? []).length === 0 && <tr><td colSpan={4} className="empty">No jobs have run from this page.</td></tr>}
                 {(data?.jobs ?? []).map((j: Record<string, any>) => (
                   <tr key={j.id}><td className="nowrap">{formatDateTime(j.started_at)}</td><td>{j.action}</td><td><span className={`badge state-${j.state}`}>{j.state}</span></td><td>{j.message}</td></tr>
                 ))}

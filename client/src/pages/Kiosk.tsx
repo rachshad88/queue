@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, query } from '../api';
 import { useSession } from '../auth';
+import { OfflineBanner } from '../components/OfflineBanner';
 import { formatDateTime } from '../format';
+import { useServerOnline } from '../socket';
 
 type Category = 'regular' | 'priority' | 'emergency';
 
@@ -10,6 +12,8 @@ function useIssue(endpoint: string, back: string) {
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  /** Ticket numbers come from the server, so the kiosk cannot issue any while offline. */
+  const online = useServerOnline();
   const issue = async (body: Record<string, unknown>): Promise<void> => {
     if (busy) {
       return;
@@ -24,13 +28,14 @@ function useIssue(endpoint: string, back: string) {
     }
     navigate(`/ticket${query({ department_id: result.department_id, queue_number: result.queue_number, code: result.code, back })}`);
   };
-  return { busy, error, issue };
+  return { busy: busy || !online, error, issue };
 }
 
 function KioskFrame({ title, subtitle, error, children }: { title: string; subtitle: string; error: string; children: React.ReactNode }) {
   const { user, logout } = useSession();
   return (
     <div className="kiosk">
+      <OfflineBanner detail="Tickets cannot be issued right now. Please ask the staff at the counter." />
       <div className="kiosk-card">
         <h1>{title}</h1>
         <p className="muted">{subtitle}</p>

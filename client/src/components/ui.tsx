@@ -1,3 +1,6 @@
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import type { ApiResult } from '../api';
+import { apiQuery } from '../queryClient';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 
 const paths: Record<string, string> = {
@@ -17,6 +20,10 @@ const paths: Record<string, string> = {
   monitor: 'M3 4h18v12H3zM8 20h8M12 16v4',
   menu: 'M3 6h18M3 12h18M3 18h18',
   chevron: 'M6 9l6 6 6-6',
+  play: 'M7 4.5v15l12-7.5z',
+  pause: 'M8 5v14M16 5v14',
+  transfer: 'M4 12h15M13 6l6 6-6 6',
+  check: 'M4.5 12.5l5 5L20 7',
 };
 
 export function Icon({ name, size = 18 }: { name: keyof typeof paths | string; size?: number }) {
@@ -169,25 +176,19 @@ export function StatusBadge({ status }: { status: string }) {
   return <span className={`badge status-${status}`}>{status}</span>;
 }
 
-/** Load data with an async function; `reload` re-runs it. */
-export function useLoader<T>(load: () => Promise<T>, deps: unknown[]): { data: T | null; reload: () => void; loading: boolean } {
-  const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    void load().then((result) => {
-      if (!cancelled) {
-        setData(result);
-        setLoading(false);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [...deps, tick]);
-  const reload = useCallback(() => setTick((t) => t + 1), []);
-  return { data, reload, loading };
+/**
+ * GET an API path through the shared query cache. The path is the cache key,
+ * so a revisited (or prefetched) page renders its saved copy at once while it
+ * refreshes, and a new filter or page keeps the old rows until the new ones arrive.
+ * `loading` is true only while there is nothing at all to show.
+ */
+export function useApi<T = ApiResult>(path: string | null): { data: T | null; reload: () => void; loading: boolean } {
+  const result = useQuery({
+    ...apiQuery<T>(path ?? ''),
+    enabled: path !== null,
+    placeholderData: keepPreviousData,
+  });
+  const { refetch } = result;
+  const reload = useCallback(() => void refetch(), [refetch]);
+  return { data: result.data ?? null, reload, loading: result.data === undefined && path !== null };
 }

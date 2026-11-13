@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import { api, query } from '../api';
 import { Layout } from '../components/Layout';
-import { Modal, Pagination, useLoader, useToast } from '../components/ui';
+import { Modal, Pagination, useApi, useToast } from '../components/ui';
 import { formatDateTime } from '../format';
+
+const DEFAULT_FILTERS = { q: '', department: '', online: '', page: 1 };
+/** What the page asks for when first opened (prefetched after sign-in). */
+export const USERS_PATH = `/users${query(DEFAULT_FILTERS)}`;
 
 interface User {
   user_id: number;
@@ -23,12 +27,12 @@ const BLANK = { username: '', usertype: 'staff', firstname: '', middlename: '', 
 
 export function Users() {
   const toast = useToast();
-  const [filters, setFilters] = useState({ q: '', department: '', online: '', page: 1 });
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<{ id: number | null; form: typeof BLANK } | null>(null);
   const [selected, setSelected] = useState<number[]>([]);
   const [activityFor, setActivityFor] = useState<User | null>(null);
-  const { data, reload } = useLoader(() => api(`/users${query(filters)}`), [filters]);
+  const { data, reload, loading } = useApi(`/users${query(filters)}`);
 
   const isAdmin = !!data?.is_admin;
   const users: User[] = data?.users ?? [];
@@ -105,7 +109,7 @@ export function Users() {
               <tr>{isAdmin && <th></th>}<th>Username</th><th>Name</th><th>Role</th><th>Department</th><th>Status</th><th>Last login</th><th className="right">Actions</th></tr>
             </thead>
             <tbody>
-              {users.length === 0 && <tr><td colSpan={8} className="empty">No users match.</td></tr>}
+              {!loading && users.length === 0 && <tr><td colSpan={8} className="empty">No users match.</td></tr>}
               {users.map((u) => (
                 <tr key={u.user_id}>
                   {isAdmin && (

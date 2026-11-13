@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { api, query } from '../api';
+import { query } from '../api';
 import { BASE } from '../base';
 import { Layout } from '../components/Layout';
-import { CategoryBadge, Pagination, StatusBadge, useLoader } from '../components/ui';
+import { CategoryBadge, Pagination, StatusBadge, useApi } from '../components/ui';
 import { formatDateTime } from '../format';
 
 const BLANK = { department: '', sid: '', from: '', to: '', q: '', sort: '', dir: 'asc', page: 1 };
+/** What the page asks for when first opened (prefetched after sign-in). */
+export const SERVER_HISTORY_PATH = `/server-history${query(BLANK)}`;
 const COLUMNS: [string, string][] = [['num', 'Queue number'], ['server', 'Served by'], ['department', 'Department'], ['category', 'Type'], ['status', 'Status'], ['datetime', 'Issued']];
 
 /** Every ticket that was served, and by whom. */
@@ -13,7 +15,7 @@ export function ServerHistory() {
   const [filters, setFilters] = useState(BLANK);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<number[]>([]);
-  const { data } = useLoader(() => api(`/server-history${query(filters)}`), [filters]);
+  const { data, loading } = useApi(`/server-history${query(filters)}`);
   const change = (patch: Partial<typeof BLANK>): void => setFilters((f) => ({ ...f, ...patch, page: 1 }));
   const sortBy = (key: string): void => setFilters((f) => ({ ...f, sort: key, dir: f.sort === key && f.dir === 'asc' ? 'desc' : 'asc', page: 1 }));
   const exportUrl = (extra: Record<string, string | number>): string => `${BASE}/api/server-history${query({ ...filters, export: 'csv', ...extra })}`;
@@ -71,7 +73,7 @@ export function ServerHistory() {
               </tr>
             </thead>
             <tbody>
-              {(data?.records ?? []).length === 0 && <tr><td colSpan={7} className="empty">No served tickets for this filter.</td></tr>}
+              {!loading && (data?.records ?? []).length === 0 && <tr><td colSpan={7} className="empty">No served tickets for this filter.</td></tr>}
               {(data?.records ?? []).map((r: Record<string, any>) => (
                 <tr key={r.id}>
                   <td><input type="checkbox" aria-label={`Select ${r.queue_number}`} checked={selected.includes(r.id)} onChange={(e) => setSelected((s) => (e.target.checked ? [...s, r.id] : s.filter((id) => id !== r.id)))} /></td>

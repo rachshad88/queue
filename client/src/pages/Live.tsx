@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api';
-import { Icon } from '../components/ui';
+import { Icon, useApi } from '../components/ui';
+import { OfflineBanner } from '../components/OfflineBanner';
 import { useDepartmentEvents } from '../socket';
 import { announceRepeat, announceServe, soundTest, unlockAudio } from '../voice';
 
@@ -39,11 +40,14 @@ const save = (key: string, value: unknown): void => {
 
 /** Public wall monitor: who is being served where, with spoken announcements. */
 export function Live() {
-  const [options, setOptions] = useState<{ id: number; name: string }[]>([]);
+  // Saved on this device, so the department picker is there at once on reload.
+  const { data: liveConfig } = useApi<{ departments?: { id: number; name: string }[] }>('/live-config');
+  const options = liveConfig?.departments ?? [];
   const [selected, setSelected] = useState<number[]>(() => load('live_selected_depts', []));
   const [announceOn, setAnnounceOn] = useState<boolean>(() => load('live_announce', true));
   const [showSide, setShowSide] = useState(true);
-  const [data, setData] = useState<Dept[]>([]);
+  // Last board seen, so the wall still shows numbers after a reload while offline.
+  const [data, setData] = useState<Dept[]>(() => load('live_last_data', []));
   const [failed, setFailed] = useState(false);
   const [flash, setFlash] = useState<Record<string, number>>({});
   const previous = useRef<Record<string, string>>({});
@@ -52,12 +56,11 @@ export function Live() {
   announceRef.current = announceOn;
 
   useEffect(() => {
-    void api<any>('/live-config').then((cfg) => setOptions(cfg.departments ?? []));
     window.addEventListener('pointerdown', unlockAudio, { once: true });
   }, []);
 
   // One announcement per number change, whichever of the socket payload or
-  // the poll notices it first.
+  // the follow-up refresh notices it first.
   const announceOnce = useCallback((keys: string[], number: string, flashKey: string) => {
     const now = Date.now();
     const seen = keys.some((k) => recent.current[k]?.n === number && now - recent.current[k].t < 4500);
@@ -100,15 +103,16 @@ export function Live() {
     }
     previous.current = next;
     setData(result as Dept[]);
+    save('live_last_data', result);
   }, [selected, announceOnce]);
 
   useEffect(() => {
     void fetchServing();
-    const timer = window.setInterval(() => void fetchServing(), 5000);
-    return () => window.clearInterval(timer);
   }, [fetchServing]);
 
   useDepartmentEvents(selected, 'live', {
+    // Catch up on anything missed while the socket was down.
+    connect: () => void fetchServing(),
     'queue-updated': (payload) => {
       const number = String(payload?.queue_number ?? '').trim();
       const dept = Number(payload?.dept);
@@ -157,6 +161,7 @@ export function Live() {
 
   return (
     <div className="wall">
+      <OfflineBanner detail="Reconnecting… the numbers shown may be out of date." />
       {showSide && (
         <aside className="wall-side no-print">
           <div className="row">

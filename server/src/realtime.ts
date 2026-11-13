@@ -1,6 +1,7 @@
 import type { Server as HttpServer } from 'node:http';
 import { Server } from 'socket.io';
 import { config } from './config';
+import { bumpQueueGeneration } from './sharedCache';
 
 let io: Server | null = null;
 
@@ -48,6 +49,7 @@ export function attachRealtime(server: HttpServer): Server {
 
 /** Fail-open: the socket layer being down must never block a queue action. */
 export function emit(event: string, payload: Record<string, unknown>): void {
+  bumpQueueGeneration();
   if (config.isTest) {
     emitted.push({ event, payload });
   }

@@ -29,7 +29,7 @@ export function createApp(): express.Express {
 
   const clientDir = path.resolve('client/dist');
   if (existsSync(clientDir)) {
-    app.use(express.static(clientDir, { index: false, maxAge: '1h' }));
+    app.use(express.static(clientDir, { index: false, setHeaders: setStaticCacheHeaders }));
   }
 
   app.use(express.json({ limit: '100kb' }));
@@ -96,4 +96,21 @@ export function createApp(): express.Express {
   app.use(onError);
 
   return app;
+}
+
+/**
+ * How long browsers keep each static file on disk.
+ * - assets/: content-hashed builds, never change under the same name.
+ * - img/, fonts/, sound/: kept a month, refreshed in the background after a day.
+ * - sw.js: always checked, so a new service worker is picked up on the next visit.
+ */
+export function setStaticCacheHeaders(res: { setHeader(name: string, value: string): unknown }, filePath: string): void {
+  const relative = path.relative(path.resolve('client/dist'), filePath).split(path.sep).join('/');
+  if (relative.startsWith('assets/')) {
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+  } else if (/^(img|fonts|sound)\//.test(relative)) {
+    res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=2592000');
+  } else {
+    res.setHeader('Cache-Control', 'no-cache');
+  }
 }

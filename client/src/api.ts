@@ -27,7 +27,7 @@ export async function api<T = ApiResult>(path: string, options: { method?: strin
       body: method === 'GET' ? undefined : JSON.stringify(options.body ?? {}),
     });
   } catch {
-    return { success: false, message: 'Cannot reach the server. Check the connection and try again.' } as T;
+    return { success: false, offline: true, message: 'Offline: cannot reach the queue server. Try again when the connection is back.' } as T;
   }
   let data: any = null;
   try {

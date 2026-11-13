@@ -1322,3 +1322,52 @@ body { background-color: #f2f8ff; }
 @media (max-width: 520px) {
   .topbar .brand small { display: none; }
 }
+
+/* Console action buttons carry an icon before the label. */
+.actions-bar .btn { display: inline-flex; align-items: center; gap: 0.55rem; }
+.actions-bar .btn svg { flex: none; stroke-width: 2.5; }
+.actions-bar .btn-primary svg path { fill: currentColor; }
+
+/* Sign-in form sits directly on the scene, like the hero text. */
+.arcade-cabinet { --ol: #12051e; background: none; box-shadow: none; padding: 0.5rem 0; animation: cabinet-in 700ms steps(7) 200ms backwards; }
+.arcade-cabinet-head { border-bottom: 0; padding-bottom: 0; }
+.arcade-cabinet-head h2 { color: var(--a-yellow); text-shadow: 2px 0 0 var(--ol), -2px 0 0 var(--ol), 0 2px 0 var(--ol), 0 -2px 0 var(--ol), 3px 3px 0 var(--ol); }
+.arcade-cabinet-head p, .arcade-field span, .arcade-credit {
+  color: #fff; text-shadow: 1.5px 0 0 var(--ol), -1.5px 0 0 var(--ol), 0 1.5px 0 var(--ol), 0 -1.5px 0 var(--ol), 2px 2px 0 var(--ol);
+}
+.arcade-field span { color: var(--a-yellow); }
+.arcade-check { color: #fff; font-weight: 600; text-shadow: 1.5px 0 0 var(--ol), -1.5px 0 0 var(--ol), 0 1.5px 0 var(--ol), 0 -1.5px 0 var(--ol), 2px 2px 0 var(--ol); }
+.arcade-cabinet .arcade-field input { box-shadow: 0 0 0 3px var(--ol), 0 5px 0 3px rgba(18, 5, 30, 0.35); }
+.arcade-cabinet .arcade-field input:focus { box-shadow: 0 0 0 3px var(--a-yellow), 0 0 0 6px var(--ol); }
+
+/* ---------- Offline banner (every screen) ---------- */
+.offline-banner {
+  position: fixed;
+  left: 50%;
+  bottom: 1rem;
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: calc(100vw - 2rem);
+  padding: 0.7rem 1rem;
+  background: var(--r-ink, #12051e);
+  color: #fff;
+  border: 3px solid var(--r-sun, #ffd84a);
+  box-shadow: 0 4px 0 #000;
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+.offline-banner strong {
+  flex: none;
+  padding: 0.2rem 0.45rem;
+  background: var(--r-red, #e63946);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.04em;
+  animation: offline-blink 1.2s steps(2, start) infinite;
+}
+@keyframes offline-blink { to { visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) { .offline-banner strong { animation: none; } }
+@media print { .offline-banner { display: none; } }

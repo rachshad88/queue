@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { api } from '../api';
 import { Layout } from '../components/Layout';
-import { useLoader, useToast } from '../components/ui';
+import { useApi, useToast } from '../components/ui';
 import { formatDateTime } from '../format';
 import { useDepartmentEvents } from '../socket';
 import { useSession } from '../auth';
@@ -19,13 +19,9 @@ interface Window {
 export function SectionControl() {
   const toast = useToast();
   const { config } = useSession();
-  const { data, reload } = useLoader(() => api('/sections-control'), []);
+  const { data, reload } = useApi('/sections-control');
   const [history, setHistory] = useState<Record<string, Record<string, any>[]>>({});
-  useDepartmentEvents([config.admission_dept_id, config.waiting_dept_id], 'controller', { 'queue-updated': reload });
-  useEffect(() => {
-    const timer = window.setInterval(reload, 15000);
-    return () => window.clearInterval(timer);
-  }, [reload]);
+  useDepartmentEvents([config.admission_dept_id, config.waiting_dept_id], 'controller', { 'queue-updated': reload, connect: reload });
 
   const release = async (kind: string, w: Window): Promise<void> => {
     if (!window.confirm(`Release ${w.section_name} from ${w.staff ?? 'its holder'}?`)) {

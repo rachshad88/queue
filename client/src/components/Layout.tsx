@@ -2,11 +2,13 @@ import { BASE } from '../base';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useSession } from '../auth';
+import { prefetchRoute } from '../prefetch';
+import { OfflineBanner } from './OfflineBanner';
 import { Icon } from './ui';
 
 function Item({ to, icon, children }: { to: string; icon: string; children: ReactNode }) {
   return (
-    <NavLink to={to} end className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+    <NavLink to={to} end className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`} onPointerEnter={() => prefetchRoute(to)} onFocus={() => prefetchRoute(to)} onTouchStart={() => prefetchRoute(to)}>
       <Icon name={icon} />
       <span>{children}</span>
     </NavLink>
@@ -124,6 +126,7 @@ export function Layout({ title, actions, children }: { title: string; actions?: 
           </nav>
         </div>
       </header>
+      <OfflineBanner />
       <main className="main">
         <header className="page-head">
           <h1>{title}</h1>

@@ -1,16 +1,20 @@
 import { useState } from 'react';
 import { api, query } from '../api';
 import { Layout } from '../components/Layout';
-import { Modal, Pagination, useLoader, useToast } from '../components/ui';
+import { Modal, Pagination, useApi, useToast } from '../components/ui';
+
+const DEFAULT_FILTERS = { q: '', page: 1 };
+/** What the page asks for when first opened (prefetched after sign-in). */
+export const DEPARTMENTS_PATH = `/department-management${query(DEFAULT_FILTERS)}`;
 
 const BLANK = { name: '', prefix: '', server: '', status: 'active' };
 
 export function Departments() {
   const toast = useToast();
-  const [filters, setFilters] = useState({ q: '', page: 1 });
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<{ id: number | null; form: typeof BLANK } | null>(null);
-  const { data, reload } = useLoader(() => api(`/department-management${query(filters)}`), [filters]);
+  const { data, reload, loading } = useApi(`/department-management${query(filters)}`);
 
   const save = async (): Promise<void> => {
     if (!editing) {
@@ -42,7 +46,7 @@ export function Departments() {
           <table>
             <thead><tr><th>ID</th><th>Name</th><th>Prefix</th><th>Server / physician</th><th>Status</th><th className="right">Actions</th></tr></thead>
             <tbody>
-              {(data?.departments ?? []).length === 0 && <tr><td colSpan={6} className="empty">No departments match.</td></tr>}
+              {!loading && (data?.departments ?? []).length === 0 && <tr><td colSpan={6} className="empty">No departments match.</td></tr>}
               {(data?.departments ?? []).map((d: Record<string, any>) => (
                 <tr key={d.id}>
                   <td>{d.id}</td>

@@ -1,9 +1,8 @@
-import { useEffect } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
 import { useSession } from '../auth';
 import { Layout } from '../components/Layout';
-import { useLoader, useToast } from '../components/ui';
+import { useApi, useToast } from '../components/ui';
 import { useDepartmentEvents } from '../socket';
 
 interface Row {
@@ -23,12 +22,8 @@ export function ChooseSection() {
   const toast = useToast();
   const valid = kind === 'admission' || kind === 'waiting';
   const dept = kind === 'waiting' ? config.waiting_dept_id : config.admission_dept_id;
-  const { data, reload } = useLoader(() => api(`/sections/${kind}`), [kind]);
-  useDepartmentEvents([dept], 'controller', { 'queue-updated': reload });
-  useEffect(() => {
-    const timer = window.setInterval(reload, 15000);
-    return () => window.clearInterval(timer);
-  }, [reload]);
+  const { data, reload } = useApi(`/sections/${kind}`);
+  useDepartmentEvents([dept], 'controller', { 'queue-updated': reload, connect: reload });
 
   if (!valid || (data && data.success === false)) {
     return <Navigate to="/" replace />;

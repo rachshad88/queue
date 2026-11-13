@@ -5,6 +5,7 @@ import { config } from '../config';
 import { departments, isDuplicateKey, nextId, queue, queueLog, sections, users, type DepartmentDoc, type UserDoc } from '../db';
 import { requireAdmin, throttle, userKey } from '../middleware/auth';
 import { queueUpdated } from '../realtime';
+import { bumpQueueGeneration, invalidate, LIVE_CONFIG_KEY } from '../sharedCache';
 import { revokeOtherSessions, revokeSessions } from '../services/singleLogin';
 import { releaseSectionsForUser } from '../services/stations';
 import { minutesAgo } from '../time';
@@ -489,6 +490,7 @@ adminRouter.post('/department-management', requireAdmin, async (req, res) => {
     return;
   }
   await departments().insertOne({ _id: await nextId('departments'), ...input.value });
+  invalidate(LIVE_CONFIG_KEY);
   res.json({ success: true, message: 'Department added.' });
 });
 
@@ -504,5 +506,7 @@ adminRouter.put('/department-management/:id', requireAdmin, async (req, res) => 
     return;
   }
   const result = await departments().updateOne({ _id: id }, { $set: input.value });
+  invalidate(LIVE_CONFIG_KEY);
+  bumpQueueGeneration();
   res.json(result.matchedCount === 1 ? { success: true, message: 'Department updated.' } : { success: false, error: 'db', message: 'Department not found.' });
 });
