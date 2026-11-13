@@ -38,14 +38,18 @@ const save = (key: string, value: unknown): void => {
   }
 };
 
+/** The board is a fixed 2 × 2 grid of cards. */
+const BOARD_SLOTS = 4;
+
 /** Public wall monitor: who is being served where, with spoken announcements. */
 export function Live() {
   // Saved on this device, so the department picker is there at once on reload.
-  const { data: liveConfig } = useApi<{ departments?: { id: number; name: string }[] }>('/live-config');
+  const { data: liveConfig } = useApi<{ departments?: { id: number; name: string }[]; admission_sections?: string[]; waiting_sections?: string[] }>('/live-config');
   const options = liveConfig?.departments ?? [];
   const [selected, setSelected] = useState<number[]>(() => load('live_selected_depts', []));
   const [announceOn, setAnnounceOn] = useState<boolean>(() => load('live_announce', true));
-  const [showSide, setShowSide] = useState(true);
+  // Settings float over the board; they open by themselves only when nothing is chosen yet.
+  const [showSide, setShowSide] = useState(() => load<number[]>('live_selected_depts', []).length === 0);
   // Last board seen, so the wall still shows numbers after a reload while offline.
   const [data, setData] = useState<Dept[]>(() => load('live_last_data', []));
   const [failed, setFailed] = useState(false);
@@ -131,9 +135,45 @@ export function Live() {
     },
   });
 
+  /** Cards a department puts on the board: one per window for Admission and Waiting Area, else one. */
+  const cardCount = (id: number): number => {
+    const name = options.find((d) => d.id === id)?.name.toUpperCase() ?? '';
+    if (name.includes('ADMISSION')) {
+      return Math.max(1, liveConfig?.admission_sections?.length ?? 1);
+    }
+    if (name.includes('WAITING')) {
+      return Math.max(1, liveConfig?.waiting_sections?.length ?? 1);
+    }
+    return 1;
+  };
+  const usedSlots = selected.reduce((sum, id) => sum + cardCount(id), 0);
+
+  // A selection saved before the 4-card board existed is trimmed (in order) to what fits.
+  useEffect(() => {
+    if (!liveConfig?.departments || usedSlots <= BOARD_SLOTS) {
+      return;
+    }
+    let room = BOARD_SLOTS;
+    const fitted = selected.filter((id) => {
+      const slots = cardCount(id);
+      if (slots > room) {
+        return false;
+      }
+      room -= slots;
+      return true;
+    });
+    setSelected(fitted);
+    save('live_selected_depts', fitted);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveConfig, usedSlots]);
+
   const toggle = (id: number): void => {
     setSelected((list) => {
-      const next = list.includes(id) ? list.filter((v) => v !== id) : [...list, id];
+      const adding = !list.includes(id);
+      if (adding && list.reduce((sum, v) => sum + cardCount(v), 0) + cardCount(id) > BOARD_SLOTS) {
+        return list;
+      }
+      const next = adding ? [...list, id] : list.filter((v) => v !== id);
       save('live_selected_depts', next);
       return next;
     });
@@ -142,7 +182,8 @@ export function Live() {
   const cards = useMemo(() => {
     const now = Date.now();
     const out: { key: string; dept: string; label: string; number: string; staff: string; flashing: boolean }[] = [];
-    for (const dept of data) {
+    // Only what is selected now, even while an older saved board is on screen.
+    for (const dept of data.filter((d) => selected.includes(d.id))) {
       if (dept.is_sectioned) {
         for (const s of dept.serving) {
           const key = `${dept.id}:${s.section}`;
@@ -155,9 +196,12 @@ export function Live() {
       }
     }
     return out;
-  }, [data, flash]);
+  }, [data, flash, selected]);
 
-  const waitingDepts = data.filter((d) => d.waiting.length > 0);
+  const waitingDepts = data.filter((d) => selected.includes(d.id) && d.waiting.length > 0);
+  // Always four equal slots (2 × 2); unused ones stay as dim placeholders so the grid never reflows.
+  const board = cards.slice(0, BOARD_SLOTS);
+  const emptySlots = BOARD_SLOTS - board.length;
 
   return (
     <div className="wall">
@@ -170,12 +214,19 @@ export function Live() {
               <Icon name="close" />
             </button>
           </div>
-          <h3>Departments shown</h3>
-          {options.map((d) => (
-            <label key={d.id}>
-              <input type="checkbox" checked={selected.includes(d.id)} onChange={() => toggle(d.id)} /> {d.name}
-            </label>
-          ))}
+          <h3>Cards shown ({usedSlots} of {BOARD_SLOTS})</h3>
+          {options.map((d) => {
+            const checked = selected.includes(d.id);
+            const slots = cardCount(d.id);
+            const full = !checked && usedSlots + slots > BOARD_SLOTS;
+            return (
+              <label key={d.id} className={full ? 'is-full' : undefined}>
+                <input type="checkbox" checked={checked} disabled={full} onChange={() => toggle(d.id)} /> {d.name}
+                {slots > 1 && <small className="wall-side-slots">{slots} cards</small>}
+              </label>
+            );
+          })}
+          <p className="wall-side-note">The board holds {BOARD_SLOTS} cards. Untick one to make room.</p>
           <h3>Sound</h3>
           <label>
             <input
@@ -191,18 +242,17 @@ export function Live() {
           <button className="btn btn-sm" style={{ marginTop: '0.5rem' }} onClick={() => soundTest()}>
             Test sound
           </button>
-          <p style={{ fontSize: '0.8rem', color: '#f3d6d6', marginTop: '1rem' }}>Tap anywhere once after opening this page so the browser allows sound.</p>
+          <p className="wall-side-note">Tap anywhere once after opening this page so the browser allows sound.</p>
         </aside>
       )}
-      <div className="wall-main">
+      <main className="wall-board">
         {!showSide && (
-          <button className="icon-btn no-print" onClick={() => setShowSide(true)} aria-label="Show settings">
+          <button className="icon-btn wall-settings no-print" onClick={() => setShowSide(true)} aria-label="Show settings">
             <Icon name="menu" size={22} />
           </button>
         )}
         <div className="wall-grid">
-          {cards.length === 0 && <p style={{ color: '#f3d6d6' }}>{failed ? 'Cannot load the queue right now. Retrying.' : 'Select departments in the side panel to show their serving numbers.'}</p>}
-          {cards.map((card) => {
+          {board.map((card) => {
             const idle = !card.number || card.number === '-';
             return (
               <div key={card.key} className={`wall-card${idle ? '' : ' live'}${card.flashing && !idle ? ' flash' : ''}`}>
@@ -212,26 +262,30 @@ export function Live() {
               </div>
             );
           })}
+          {Array.from({ length: emptySlots }, (_, i) => (
+            <div key={`empty-${i}`} className="wall-card wall-card-empty" aria-hidden="true">
+              {i === 0 && board.length === 0 && <p>{failed ? 'Cannot load the queue right now. Retrying.' : 'Open the menu to choose what this screen shows.'}</p>}
+            </div>
+          ))}
         </div>
-        {waitingDepts.length > 0 && (
-          <aside className="wall-rail">
-            <h3>Waiting</h3>
-            {waitingDepts.map((dept) => (
-              <div key={dept.id} className="rail-dept">
-                <div className="rail-dept-head">
-                  <span>{dept.name}</span>
-                  <span>{dept.waiting_total}</span>
-                </div>
-                <div className="rail-nums">
-                  {dept.waiting.map((w) => (
-                    <span key={w.id} className={`rail-num ${w.category}`}>{w.queue_number}</span>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </aside>
-        )}
-      </div>
+      </main>
+      <aside className="wall-rail">
+        <h3>Waiting</h3>
+        {waitingDepts.length === 0 && <p className="wall-rail-empty">No one waiting</p>}
+        {waitingDepts.map((dept) => (
+          <div key={dept.id} className="rail-dept">
+            <div className="rail-dept-head">
+              <span>{dept.name}</span>
+              <span>{dept.waiting_total}</span>
+            </div>
+            <div className="rail-nums">
+              {dept.waiting.map((w) => (
+                <span key={w.id} className={`rail-num ${w.category}`}>{w.queue_number}</span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </aside>
     </div>
   );
 }

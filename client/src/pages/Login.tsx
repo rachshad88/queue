@@ -137,6 +137,118 @@ function PixelCar({ className, color }: { className: string; color: string }) {
   );
 }
 
+/** A slow box truck seen from behind. */
+function PixelTruck({ className, color }: { className: string; color: string }) {
+  return (
+    <svg className={className} viewBox="0 0 32 30" shapeRendering="crispEdges">
+      <rect x="1" y="0" width="30" height="22" fill="#1b1030" />
+      <rect x="2" y="1" width="28" height="20" fill={color} />
+      <rect x="2" y="1" width="28" height="1" fill="#ffffff" opacity="0.45" />
+      <rect x="4" y="4" width="9" height="2" fill="#ffffff" opacity="0.75" />
+      <rect x="4" y="7" width="6" height="1" fill="#ffffff" opacity="0.5" />
+      <rect x="15" y="2" width="2" height="19" fill="#1b1030" opacity="0.55" />
+      <rect x="12" y="10" width="2" height="4" fill="#1b1030" />
+      <rect x="18" y="10" width="2" height="4" fill="#1b1030" />
+      <rect x="1" y="22" width="30" height="3" fill="#4b4566" />
+      <rect x="2" y="22" width="4" height="2" fill="#ff2747" />
+      <rect x="26" y="22" width="4" height="2" fill="#ff2747" />
+      <rect x="13" y="22" width="6" height="2" fill="#f4f1fb" />
+      <rect x="2" y="25" width="9" height="4" fill="#0a0612" />
+      <rect x="21" y="25" width="9" height="4" fill="#0a0612" />
+    </svg>
+  );
+}
+
+/** A motorcycle and rider seen from behind. */
+function PixelMoto({ className, color }: { className: string; color: string }) {
+  return (
+    <svg className={className} viewBox="0 0 14 22" shapeRendering="crispEdges">
+      <rect x="5" y="0" width="4" height="4" fill="#f4f1fb" />
+      <rect x="5" y="3" width="4" height="1" fill="#b9b3cc" />
+      <rect x="3" y="4" width="8" height="7" fill={color} />
+      <rect x="3" y="4" width="8" height="1" fill="#ffffff" opacity="0.4" />
+      <rect x="1" y="6" width="2" height="4" fill={color} />
+      <rect x="11" y="6" width="2" height="4" fill={color} />
+      <rect x="0" y="9" width="14" height="1" fill="#1b1030" />
+      <rect x="4" y="11" width="6" height="4" fill="#1b1030" />
+      <rect x="2" y="11" width="2" height="5" fill="#2a2a44" />
+      <rect x="10" y="11" width="2" height="5" fill="#2a2a44" />
+      <rect x="4" y="15" width="6" height="2" fill="#4b4566" />
+      <rect x="5" y="15" width="4" height="1" fill="#ff2747" />
+      <rect x="6" y="17" width="2" height="5" fill="#0a0612" />
+    </svg>
+  );
+}
+
+/** Roadside buildings that sweep past as the ambulance drives on. */
+function PixelHouse({ className }: { className: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" shapeRendering="crispEdges">
+      <rect x="8" y="0" width="4" height="2" fill="#7a2e2e" />
+      <rect x="5" y="2" width="10" height="2" fill="#a33b3b" />
+      <rect x="2" y="4" width="16" height="2" fill="#a33b3b" />
+      <rect x="0" y="6" width="20" height="2" fill="#7a2e2e" />
+      <rect x="2" y="8" width="16" height="12" fill="#f2e3c6" />
+      <rect x="2" y="8" width="16" height="1" fill="#d9c7a5" />
+      <rect x="4" y="10" width="4" height="4" fill="#5aa7d6" />
+      <rect x="12" y="10" width="4" height="4" fill="#5aa7d6" />
+      <rect x="9" y="13" width="3" height="7" fill="#6b4226" />
+    </svg>
+  );
+}
+
+function PixelStore({ className }: { className: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 20" shapeRendering="crispEdges">
+      <rect x="0" y="0" width="24" height="5" fill="#2f6e8c" />
+      <rect x="2" y="1" width="20" height="3" fill="#ffd84a" />
+      <rect x="0" y="5" width="24" height="15" fill="#e9eef2" />
+      {[0, 4, 8, 12, 16, 20].map((x) => (
+        <rect key={x} x={x} y="6" width="2" height="3" fill="#e63946" />
+      ))}
+      {[2, 6, 10, 14, 18, 22].map((x) => (
+        <rect key={x} x={x} y="6" width="2" height="3" fill="#ffffff" />
+      ))}
+      <rect x="2" y="11" width="8" height="6" fill="#5aa7d6" />
+      <rect x="14" y="11" width="6" height="9" fill="#3a5568" />
+      <rect x="0" y="19" width="24" height="1" fill="#9aa3ab" />
+    </svg>
+  );
+}
+
+function PixelTower({ className }: { className: string }) {
+  return (
+    <svg className={className} viewBox="0 0 16 34" shapeRendering="crispEdges">
+      <rect x="6" y="0" width="1" height="3" fill="#4b4566" />
+      <rect x="0" y="3" width="16" height="31" fill="#5c6b84" />
+      <rect x="0" y="3" width="2" height="31" fill="#4a5770" />
+      {[5, 9, 13, 17, 21, 25].flatMap((y) =>
+        [3, 7, 11].map((x) => <rect key={`${x}-${y}`} x={x} y={y} width="2" height="2" className={(x + y) % 3 === 0 ? 'arcade-window' : undefined} fill="#ffe14d" />),
+      )}
+      <rect x="6" y="29" width="4" height="5" fill="#2b3346" />
+    </svg>
+  );
+}
+
+/** A small pixel town on the horizon, in front of the mountains. */
+function PixelTown({ className }: { className: string }) {
+  const blocks: [number, number, number][] = [
+    [0, 14, 8], [8, 8, 7], [15, 18, 9], [24, 11, 6], [30, 5, 8], [38, 15, 7], [45, 10, 9], [54, 19, 6], [60, 12, 8],
+  ];
+  return (
+    <svg className={className} viewBox="0 0 68 30" preserveAspectRatio="xMidYMax meet" shapeRendering="crispEdges">
+      {blocks.map(([x, y, w]) => (
+        <g key={x}>
+          <rect x={x} y={y} width={w} height={30 - y} className="town-block" />
+          {Array.from({ length: Math.floor((26 - y) / 4) }, (_, row) => (
+            <rect key={row} x={x + 2} y={y + 3 + row * 4} width={Math.max(1, w - 4)} height="1" className="town-lights" />
+          ))}
+        </g>
+      ))}
+    </svg>
+  );
+}
+
 /** Shown for a moment after a successful sign-in: the ambulance has arrived at the hospital. */
 function Arrival() {
   return (
@@ -271,8 +383,18 @@ export function Login() {
               <polygon className="near" points="0,40 0,22 2,22 2,23 4,23 4,25 6,25 6,26 8,26 8,28 10,28 10,29 12,29 12,30 14,30 14,32 16,32 16,33 18,33 18,35 20,35 20,34 22,34 22,32 24,32 24,31 26,31 26,29 28,29 28,28 30,28 30,26 32,26 32,24 34,24 34,23 36,23 36,21 38,21 38,20 40,20 40,18 42,18 42,20 44,20 44,21 46,21 46,23 48,23 48,24 50,24 50,26 52,26 52,28 54,28 54,29 56,29 56,31 58,31 58,32 60,32 60,34 62,34 62,36 64,36 64,37 66,37 66,37 68,37 68,36 70,36 70,34 72,34 72,33 74,33 74,32 76,32 76,30 78,30 78,29 80,29 80,28 82,28 82,26 84,26 84,25 86,25 86,25 88,25 88,26 90,26 90,28 92,28 92,29 94,29 94,30 96,30 96,32 98,32 98,33 100,33 100,34 102,34 102,33 104,33 104,32 106,32 106,30 108,30 108,29 110,29 110,27 112,27 112,26 114,26 114,24 116,24 116,23 118,23 118,21 120,21 120,20 122,20 122,18 124,18 124,17 126,17 126,17 128,17 128,18 130,18 130,20 132,20 132,21 134,21 134,23 136,23 136,24 138,24 138,26 140,26 140,27 142,27 142,29 144,29 144,30 146,30 146,32 148,32 148,33 150,33 150,35 152,35 152,36 154,36 154,35 156,35 156,33 158,33 158,32 160,32 160,30 162,30 162,29 164,29 164,28 166,28 166,26 168,26 168,25 170,25 170,24 172,24 172,22 174,22 174,21 176,21 176,21 178,21 178,22 180,22 180,24 182,24 182,25 184,25 184,26 186,26 186,28 188,28 188,29 190,29 190,30 192,30 192,32 194,32 194,33 196,33 196,35 198,35 198,36 200,36 200,38 202,38 200,40" />
             </svg>
           </div>
+          <PixelTown className="arcade-town left" />
+          <PixelTown className="arcade-town right" />
           <div className="arcade-grid" />
           <div className="arcade-warp"><span /></div>
+          <div className="arcade-roadside">
+            <PixelHouse className="arcade-bldg side-left bldg-1" />
+            <PixelTower className="arcade-bldg side-left bldg-2" />
+            <PixelStore className="arcade-bldg side-left bldg-3" />
+            <PixelStore className="arcade-bldg side-right bldg-4" />
+            <PixelHouse className="arcade-bldg side-right bldg-5" />
+            <PixelTower className="arcade-bldg side-right bldg-6" />
+          </div>
           <div className="arcade-highway">
             <svg className="arcade-highway-road" viewBox="0 0 100 100" preserveAspectRatio="none">
               <polygon points="50,0 2.5,100 97.5,100" />
@@ -288,6 +410,8 @@ export function Login() {
             <PixelCar className="arcade-car lane-left car-a" color="#29f0ff" />
             <PixelCar className="arcade-car lane-right car-b" color="#ffe14d" />
             <PixelCar className="arcade-car lane-left car-c" color="#3dff8f" />
+            <PixelMoto className="arcade-car arcade-moto lane-left car-d" color="#ff7a1a" />
+            <PixelTruck className="arcade-car arcade-truck lane-right car-e" color="#f4f1fb" />
           </div>
           <div className="arcade-road">
             <Ambulance />

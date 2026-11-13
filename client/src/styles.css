@@ -769,6 +769,67 @@ tr.is-unattended td { background: var(--amber-soft); }
   36% { transform: translate(31.7cqw, 100cqh) scale(1); opacity: 1; }
   42%, 100% { transform: translate(36.5cqw, 115cqh) scale(1.15); opacity: 0; }
 }
+/* More traffic: a motorcycle shares the left lane and a box truck the right one.
+   Each lane keeps one speed so vehicles never drive through each other. */
+.arcade-truck { width: 22cqw; margin-left: -11cqw; }
+.arcade-moto { width: 7cqw; margin-left: -3.5cqw; }
+.arcade-car.car-d { animation-duration: 6s; animation-delay: 1.7s; }
+.arcade-car.car-e { animation-duration: 7.5s; animation-delay: 5.95s; }
+
+/* Roadside buildings: the same geometry as the highway, but unmasked so they can
+   stand beside the road. They follow straight lines from the vanishing point and
+   fade before they grow large enough to crowd the sign-in form. */
+.arcade-roadside {
+  position: absolute; left: 50%; bottom: 0; width: calc(var(--amb-w) * 4); height: calc(var(--amb-w) * 1.3); margin-left: calc(var(--amb-w) * -2);
+  container-type: size; pointer-events: none;
+}
+.arcade-bldg {
+  position: absolute; left: 50%; top: 0; height: auto; translate: 0 -100%; transform: scale(0); transform-origin: 50% 100%;
+  image-rendering: pixelated; will-change: transform; opacity: 0; animation: 4s linear infinite;
+  filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.18));
+}
+.arcade-bldg.side-left { animation-name: side-left; }
+.arcade-bldg.side-right { animation-name: side-right; }
+.arcade-bldg.bldg-1, .arcade-bldg.bldg-5 { width: 12cqw; margin-left: -6cqw; }
+.arcade-bldg.bldg-2, .arcade-bldg.bldg-6 { width: 9cqw; margin-left: -4.5cqw; }
+.arcade-bldg.bldg-3, .arcade-bldg.bldg-4 { width: 14cqw; margin-left: -7cqw; }
+.arcade-bldg.bldg-2 { animation-delay: 1.33s; }
+.arcade-bldg.bldg-3 { animation-delay: 2.66s; }
+.arcade-bldg.bldg-4 { animation-delay: 0.66s; }
+.arcade-bldg.bldg-5 { animation-delay: 2s; }
+.arcade-bldg.bldg-6 { animation-delay: 3.33s; }
+@keyframes side-left {
+  0% { transform: translate(0, 0) scale(0.02); opacity: 0; animation-timing-function: cubic-bezier(0.62, 0, 0.96, 0.55); }
+  6% { opacity: 1; }
+  34% { transform: translate(-37cqw, 60cqh) scale(0.6); opacity: 1; }
+  42%, 100% { transform: translate(-43cqw, 70cqh) scale(0.7); opacity: 0; }
+}
+@keyframes side-right {
+  0% { transform: translate(0, 0) scale(0.02); opacity: 0; animation-timing-function: cubic-bezier(0.62, 0, 0.96, 0.55); }
+  6% { opacity: 1; }
+  34% { transform: translate(37cqw, 60cqh) scale(0.6); opacity: 1; }
+  42%, 100% { transform: translate(43cqw, 70cqh) scale(0.7); opacity: 0; }
+}
+
+/* Distant town on the horizon, in front of the mountains. */
+.arcade-town { position: absolute; bottom: calc(var(--horizon) - 1px); width: clamp(120px, 20vw, 320px); height: auto; image-rendering: pixelated; }
+.arcade-town.left { left: 2%; }
+.arcade-town.right { right: 2%; transform: scaleX(-1); }
+.arcade-town .town-block { fill: #7f97b5; }
+.arcade-town .town-lights { fill: #fff2b8; opacity: 0.75; }
+
+.arcade-boost .arcade-bldg { animation-duration: 0.7s !important; }
+/* Keep the buildings spread out at hyperspeed rather than bunched together. */
+.arcade-boost .arcade-bldg.bldg-1 { animation-delay: 0s; }
+.arcade-boost .arcade-bldg.bldg-2 { animation-delay: -0.23s; }
+.arcade-boost .arcade-bldg.bldg-3 { animation-delay: -0.47s; }
+.arcade-boost .arcade-bldg.bldg-4 { animation-delay: -0.12s; }
+.arcade-boost .arcade-bldg.bldg-5 { animation-delay: -0.35s; }
+.arcade-boost .arcade-bldg.bldg-6 { animation-delay: -0.58s; }
+@media (prefers-reduced-motion: reduce) {
+  .arcade-bldg { display: none; }
+}
+
 .arcade-hero-inner {
   width: min(1180px, 100%); margin: 0 auto; padding: clamp(2rem, 6vh, 4rem) clamp(1rem, 4vw, 3rem) calc(var(--amb-w) * 0.85 + 3.5rem);
   display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 410px); gap: clamp(2rem, 6vw, 5rem); align-items: center; scroll-margin-top: 80px;
@@ -1371,3 +1432,88 @@ body { background-color: #f2f8ff; }
 @keyframes offline-blink { to { visibility: hidden; } }
 @media (prefers-reduced-motion: reduce) { .offline-banner strong { animation: none; } }
 @media print { .offline-banner { display: none; } }
+
+/* ---------- Live wall layout: full screen, 2 × 2 board + 10% waiting rail ---------- */
+.wall {
+  --wall-gap: clamp(8px, 1vw, 16px);
+  box-sizing: border-box;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  display: grid;
+  /* The rail is exactly a tenth of the screen; the board takes the rest. */
+  grid-template-columns: minmax(0, 1fr) 10vw;
+  gap: var(--wall-gap);
+  padding: var(--wall-gap);
+}
+.wall-board { position: relative; min-width: 0; min-height: 0; }
+.wall-grid {
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: var(--wall-gap);
+}
+.wall-card {
+  container-type: size;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2%;
+  padding: clamp(0.5rem, 1.5vmin, 1.25rem);
+}
+/* Text scales with its own card, so four cards fill a TV the same way they fill a laptop. */
+.wall-card .dept { font-size: min(5.2cqi, 9cqb); text-align: center; }
+.wall-card .num { font-size: min(13cqi, 32cqb); line-height: 1.2; }
+.wall-card .staff { font-size: min(3.6cqi, 6.5cqb); min-height: 1.2em; text-align: center; }
+.wall-card-empty {
+  background: transparent;
+  box-shadow: none;
+  border: 3px dashed rgba(255, 255, 255, 0.12);
+  animation: none;
+}
+.wall-card-empty p { max-width: 80%; text-align: center; color: rgba(255, 255, 255, 0.6); font-size: min(4cqi, 7cqb); }
+
+.wall-settings { position: absolute; top: 6px; left: 6px; z-index: 5; opacity: 0.35; transition: opacity 150ms ease; }
+.wall-settings:hover, .wall-settings:focus-visible { opacity: 1; }
+
+/* Settings float over the board instead of taking a column. */
+.wall-side {
+  position: fixed;
+  z-index: 60;
+  top: var(--wall-gap);
+  left: var(--wall-gap);
+  bottom: var(--wall-gap);
+  width: min(320px, calc(100vw - 2 * var(--wall-gap)));
+  margin: 0;
+  max-height: none;
+  box-shadow: 0 0 0 3px var(--r-ink), 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+.wall-side label.is-full { opacity: 0.45; cursor: not-allowed; }
+.wall-side-slots { margin-left: auto; font-size: 0.7rem; color: #c9c9d2; }
+.wall-side-note { margin-top: 0.6rem; font-size: 0.78rem; line-height: 1.45; color: #d9d9e0; }
+
+.wall-rail {
+  width: auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden auto;
+  padding: clamp(0.4rem, 0.6vw, 0.8rem);
+}
+.wall-rail h3 { font-size: clamp(0.5rem, 0.7vw, 0.85rem); margin: 0; }
+.rail-dept-head { font-size: clamp(0.45rem, 0.55vw, 0.7rem); gap: 0.35rem; }
+.rail-dept-head span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.rail-nums { gap: 0.3rem; }
+.rail-num { font-size: clamp(0.5rem, 0.7vw, 0.85rem); padding: 0.3em 0.4em; }
+.wall-rail-empty { margin-top: 0.8rem; color: rgba(255, 255, 255, 0.55); font-size: clamp(0.65rem, 0.75vw, 0.9rem); }
+
+/* Phones: stack the board over the list and let the page scroll. */
+@media (max-width: 700px) {
+  .wall { height: auto; overflow: visible; grid-template-columns: minmax(0, 1fr); }
+  .wall-grid { height: auto; grid-template-rows: repeat(2, 44vw); }
+}
