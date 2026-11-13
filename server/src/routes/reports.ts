@@ -44,10 +44,12 @@ function datePreset(from: string, to: string): 'today' | 'week' | 'month' | null
 
 /** Audit trail lookup. Deliberately returns nothing until a filter is chosen. */
 reportsRouter.get('/audit-trail', async (req, res) => {
+  const PAGE_SIZE = 20;
   const selectedDept = str(req.query.department);
   const search = trimmed(req.query.search);
   const hasFilter = selectedDept !== '' || search !== '';
   const rows: Record<string, unknown>[] = [];
+  let paging = paginate(0, 1, PAGE_SIZE);
 
   if (hasFilter) {
     const filter: Filter<QueueLogDoc> = {};
@@ -57,7 +59,8 @@ reportsRouter.get('/audit-trail', async (req, res) => {
     if (search !== '') {
       filter.queue_number = contains(search);
     }
-    const logs = await queueLog().find(filter).sort({ created_at: -1, _id: -1 }).limit(2000).toArray();
+    paging = paginate(await queueLog().countDocuments(filter), num(req.query.page) || 1, PAGE_SIZE);
+    const logs = await queueLog().find(filter).sort({ created_at: -1, _id: -1 }).skip(paging.offset).limit(PAGE_SIZE).toArray();
     const names = await staffNames([...logs.map((l) => l.user_id), ...logs.map((l) => l.approved_by ?? null)]);
     const deptNames = new Map((await departments().find().toArray()).map((d) => [d._id, d.name]));
     for (const log of logs) {
@@ -72,7 +75,7 @@ reportsRouter.get('/audit-trail', async (req, res) => {
       });
     }
   }
-  res.json({ success: true, departments: await departmentOptions(), has_filter: hasFilter, rows });
+  res.json({ success: true, departments: await departmentOptions(), has_filter: hasFilter, rows, paging });
 });
 
 /** Full queue audit log with filters (superadmin). */

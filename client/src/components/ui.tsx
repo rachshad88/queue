@@ -24,6 +24,9 @@ const paths: Record<string, string> = {
   pause: 'M8 5v14M16 5v14',
   transfer: 'M4 12h15M13 6l6 6-6 6',
   check: 'M4.5 12.5l5 5L20 7',
+  trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
+  undo: 'M9 14L4 9l5-5M4 9h11a5 5 0 0 1 0 10h-4',
+  takeover: 'M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3',
 };
 
 export function Icon({ name, size = 18 }: { name: keyof typeof paths | string; size?: number }) {

@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { config } from '../config';
 import { backupJobs, db } from '../db';
+import { emitToUser } from '../realtime';
 
 /**
  * MongoDB backups: `mongodump` archives written outside the web root.
@@ -167,13 +168,27 @@ export async function runAction(action: BackupAction, file: string | null): Prom
   return { file: null, message: await pruneBackups() };
 }
 
-/** Start an action in the background and return its job id for polling. */
+/** Tell the screen that started a job how it ended (over its socket). */
+function announceJob(userId: number | null, id: string, state: 'done' | 'failed', message: string): void {
+  if (userId) {
+    emitToUser(userId, 'backup-job', { job: id, state, message });
+  }
+}
+
+/** Start an action in the background and return its job id; the result is pushed over the socket. */
 export async function startJob(action: BackupAction, file: string | null, userId: number | null): Promise<string> {
   const id = randomBytes(8).toString('hex');
   await backupJobs().insertOne({ _id: id, action, file, state: 'running', message: 'Started', user_id: userId, started_at: new Date(), finished_at: null });
   void runAction(action, file)
-    .then((result) => backupJobs().updateOne({ _id: id }, { $set: { state: 'done', message: result.message, file: result.file, finished_at: new Date() } }))
-    .catch((error: Error) => backupJobs().updateOne({ _id: id }, { $set: { state: 'failed', message: error.message.slice(0, 500), finished_at: new Date() } }))
+    .then(async (result) => {
+      await backupJobs().updateOne({ _id: id }, { $set: { state: 'done', message: result.message, file: result.file, finished_at: new Date() } });
+      announceJob(userId, id, 'done', result.message);
+    })
+    .catch(async (error: Error) => {
+      const message = error.message.slice(0, 500);
+      await backupJobs().updateOne({ _id: id }, { $set: { state: 'failed', message, finished_at: new Date() } });
+      announceJob(userId, id, 'failed', message);
+    })
     .catch((error) => console.error('backup job bookkeeping failed', error));
   return id;
 }

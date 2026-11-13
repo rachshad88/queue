@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useRef, useState } from 'react';
 import { api } from '../api';
 import { BASE } from '../base';
 import { Layout } from '../components/Layout';
 import { PasswordPrompt, useApi, useToast } from '../components/ui';
 import { formatBytes, formatDateTime } from '../format';
+import { useSocketEvent } from '../socket';
 
 const STATE_TEXT: Record<string, string> = { ok: 'Backups are current', warn: 'Latest backup is getting old', critical: 'No recent backup' };
 
@@ -13,21 +14,18 @@ export function Backup() {
   const [job, setJob] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  // Poll the running job until it finishes.
-  useEffect(() => {
-    if (!job) {
+  // The server announces a finished job over the socket (no polling). A quick
+  // job can finish before its id is known here, so finished ids are remembered.
+  const finished = useRef(new Set<string>());
+  useSocketEvent('backup-job', (payload: { job?: string; state?: string; message?: string }) => {
+    if (!payload?.job) {
       return;
     }
-    const timer = window.setInterval(async () => {
-      const status = await api(`/backup/status?job=${job}`);
-      if (status.state && status.state !== 'running') {
-        toast(status.message ?? 'Job finished.', status.state === 'done' ? 'success' : 'error');
-        setJob(null);
-        reload();
-      }
-    }, 1500);
-    return () => window.clearInterval(timer);
-  }, [job, reload, toast]);
+    finished.current.add(payload.job);
+    toast(payload.message ?? 'Job finished.', payload.state === 'done' ? 'success' : 'error');
+    setJob((current) => (current === payload.job ? null : current));
+    reload();
+  });
 
   const start = async (action: string, file?: string): Promise<void> => {
     const result = await api('/backup', { body: { action, file } });
@@ -36,7 +34,7 @@ export function Backup() {
       return;
     }
     toast('Job started.', 'info');
-    setJob(result.job);
+    setJob(finished.current.has(result.job) ? null : result.job);
     reload();
   };
 

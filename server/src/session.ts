@@ -67,11 +67,29 @@ class MongoSessionStore extends Store {
   }
 }
 
+/** One store and one middleware, shared by HTTP and the realtime socket handshake. */
+export const sessionStore = new MongoSessionStore();
+let shared: ReturnType<typeof session> | null = null;
+
+/** Read a session straight from the store (null when missing or expired). */
+export function loadSession(sid: string): Promise<SessionData | null> {
+  return new Promise((resolve) => {
+    sessionStore.get(sid, (err, sess) => resolve(err ? null : (sess ?? null)));
+  });
+}
+
+/** Push a session's expiry forward, as any HTTP request would. */
+export function touchSession(sid: string, sess: SessionData): Promise<void> {
+  return new Promise((resolve) => {
+    sessionStore.touch(sid, sess, () => resolve());
+  });
+}
+
 export function sessionMiddleware() {
-  return session({
+  return (shared ??= session({
     name: 'rhu_queue_session',
     secret: config.sessionSecret,
-    store: new MongoSessionStore(),
+    store: sessionStore,
     resave: false,
     saveUninitialized: false,
     rolling: true,
@@ -81,5 +99,5 @@ export function sessionMiddleware() {
       secure: config.secureCookies,
       maxAge: config.sessionLifetimeMin * 60000,
     },
-  });
+  }));
 }

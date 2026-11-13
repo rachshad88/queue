@@ -4,7 +4,7 @@ import path from 'node:path';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { config } from '../src/config';
-import { backupJobs, departments, sections, securityEvents, users } from '../src/db';
+import { backupJobs, departments, queueLog, sections, securityEvents, users } from '../src/db';
 import { assessRequest, detectAutomatedVisitor, ipBlocks, ipMatches, riskLevel } from '../src/middleware/security';
 import { copyToSecondFolder, inventory, pruneBackups, takeBackup, verifyBackup } from '../src/services/backup';
 import { app, client, loggedIn, makeUser, PASSWORD, seedRow, useDatabase } from './helpers';
@@ -279,6 +279,21 @@ describe('departments and reports', () => {
     const trail = (await lab.get('/api/audit-trail')).body;
     expect(trail).toMatchObject({ has_filter: false, rows: [] });
     expect((await lab.get('/api/audit-trail?search=R-0')).body.rows).toHaveLength(2);
+  });
+
+  it('pages the audit trail 20 entries at a time', async () => {
+    const lab = await makeUser('lab1', 5);
+    await queueLog().insertMany(
+      Array.from({ length: 45 }, (_, i) => ({ queue_number: `R-${String(i + 1).padStart(3, '0')}`, action: 'serving', department_id: 5, user_id: lab, created_at: new Date(Date.now() - i * 1000) })) as never,
+    );
+    const user = await loggedIn('lab1');
+    const first = (await user.get('/api/audit-trail?department=5')).body;
+    expect(first.rows).toHaveLength(20);
+    expect(first.rows[0].queue_number).toBe('R-001');
+    expect(first.paging).toMatchObject({ page: 1, total_pages: 3, total_records: 45 });
+    const last = (await user.get('/api/audit-trail?department=5&page=3')).body;
+    expect(last.rows).toHaveLength(5);
+    expect(last.rows[4].queue_number).toBe('R-045');
   });
 
   it('lists and exports the server history', async () => {

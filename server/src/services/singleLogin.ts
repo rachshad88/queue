@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import type { SessionData } from 'express-session';
+import { config } from '../config';
 import { users } from '../db';
 
 /** Admins and superadmins keep multi-device access. */
@@ -100,4 +101,30 @@ export async function idleMinutesFor(userId: number): Promise<number | null> {
     return null;
   }
   return Math.floor((Date.now() - user.last_active.getTime()) / 60000);
+}
+
+export type SessionEndReason = 'login' | 'revoked' | 'another_device' | 'inactive';
+
+/**
+ * Why a session can no longer be used, or null while it is fine. Checked
+ * without stamping activity, so the check itself never revives an idle account.
+ */
+export async function sessionEndReason(session: Partial<SessionData>): Promise<SessionEndReason | null> {
+  const userId = session.user_id ?? 0;
+  if (userId < 1) {
+    return 'login';
+  }
+  if (!(await sessionStillAuthorized(session))) {
+    return 'revoked';
+  }
+  if (!(await assertSingleLogin(session, userId, session.usertype, '', false))) {
+    return 'another_device';
+  }
+  if (!isExempt(session.usertype)) {
+    const idle = await idleMinutesFor(userId);
+    if (idle !== null && idle > config.idleExpiryMin) {
+      return 'inactive';
+    }
+  }
+  return null;
 }

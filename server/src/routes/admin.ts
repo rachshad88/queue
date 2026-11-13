@@ -4,7 +4,7 @@ import type { Filter } from 'mongodb';
 import { config } from '../config';
 import { departments, isDuplicateKey, nextId, queue, queueLog, sections, users, type DepartmentDoc, type UserDoc } from '../db';
 import { requireAdmin, throttle, userKey } from '../middleware/auth';
-import { queueUpdated } from '../realtime';
+import { queueUpdated, recheckSessions } from '../realtime';
 import { bumpQueueGeneration, invalidate, LIVE_CONFIG_KEY } from '../sharedCache';
 import { revokeOtherSessions, revokeSessions } from '../services/singleLogin';
 import { releaseSectionsForUser } from '../services/stations';
@@ -77,6 +77,7 @@ async function userReferenceCount(id: number): Promise<number> {
 /** Sign a user out everywhere and free any window they held, so walls and choosers update at once. */
 async function signOutEverywhere(userId: number, ip: string): Promise<void> {
   await revokeSessions(userId);
+  void recheckSessions(userId);
   await releaseSectionsForUser(userId, ip);
   queueUpdated(config.admissionDeptId);
   queueUpdated(config.waitingDeptId);
@@ -264,6 +265,7 @@ adminRouter.put('/users/:id', async (req, res) => {
     await signOutEverywhere(id, clientIp(req));
   } else if (passwordChanged && isSelf) {
     await revokeOtherSessions(req.session, id);
+    void recheckSessions(id);
   }
   if (isSelf) {
     req.session.username = username;
@@ -436,6 +438,7 @@ adminRouter.post('/update-password', throttle('password-update', config.throttle
   }
   await users().updateOne({ _id: userId }, { $set: { password: await hash(newPassword) } });
   await revokeOtherSessions(req.session, userId);
+  void recheckSessions(userId);
   req.session.default_pw = false;
   res.json({ success: true });
 });

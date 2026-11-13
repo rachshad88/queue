@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { query } from '../api';
 import { Layout } from '../components/Layout';
-import { useApi } from '../components/ui';
+import { Pagination, useApi } from '../components/ui';
 import { formatDateTime } from '../format';
 
-const DEFAULT_FILTERS = { department: '', search: '' };
+const DEFAULT_FILTERS = { department: '', search: '', page: 1 };
 /** What the page asks for when first opened (prefetched after sign-in). */
 export const AUDIT_TRAIL_PATH = `/audit-trail${query(DEFAULT_FILTERS)}`;
 
@@ -21,7 +21,7 @@ export function AuditTrail() {
           className="filters"
           onSubmit={(e) => {
             e.preventDefault();
-            setFilters(draft);
+            setFilters({ ...draft, page: 1 });
           }}
         >
           <label className="field">
@@ -50,6 +50,7 @@ export function AuditTrail() {
             </table>
           </div>
         )}
+        {data?.has_filter && data.paging?.total_pages > 1 && <Pagination paging={data.paging} onPage={(page) => setFilters((f) => ({ ...f, page }))} />}
       </div>
     </Layout>
   );

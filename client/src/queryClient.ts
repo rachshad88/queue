@@ -24,9 +24,24 @@ export const queryClient = new QueryClient({
   },
 });
 
-/** Saves the query cache in this browser so screens open with their last data while offline. */
+/** Saves part of the query cache in this browser so screens open with their last data while offline. */
 const STORAGE_KEY = 'rhuq-query-cache';
-const BUSTER = 'v1';
+/** v2: admin pages are no longer saved; older saved caches (which held them) are discarded. */
+const BUSTER = 'v2';
+
+/**
+ * Only what a working screen needs offline is written to the device: the
+ * console and its queue, the window picker and the wall's department list.
+ * Admin pages (users, audit trail, logs, backups) stay in memory only, so they
+ * never outlive the session on a shared computer.
+ */
+function isSavedOnDevice(queryKey: readonly unknown[]): boolean {
+  const [kind, path] = queryKey;
+  if (kind === 'console-queue') {
+    return true;
+  }
+  return kind === 'api' && typeof path === 'string' && (path === '/console' || path === '/live-config' || path.startsWith('/sections/'));
+}
 
 export const persister = createSyncStoragePersister({
   storage: typeof window === 'undefined' ? undefined : window.localStorage,
@@ -43,11 +58,18 @@ export function restoreSavedCache(): void {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null') as PersistedClient | null;
     if (saved && saved.buster === BUSTER && Date.now() - saved.timestamp < CACHE_MAX_AGE) {
       hydrate(queryClient, saved.clientState);
+    } else if (saved) {
+      localStorage.removeItem(STORAGE_KEY);
     }
   } catch {
     // Unreadable or blocked storage: start with an empty cache.
   }
-  persistQueryClientSubscribe({ queryClient, persister, buster: BUSTER });
+  persistQueryClientSubscribe({
+    queryClient,
+    persister,
+    buster: BUSTER,
+    dehydrateOptions: { shouldDehydrateQuery: (query) => query.state.status === 'success' && isSavedOnDevice(query.queryKey) },
+  });
 }
 
 /**

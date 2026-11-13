@@ -35,6 +35,32 @@ export function useServerOnline(): boolean {
   return useSyncExternalStore(watchConnection, () => online);
 }
 
+/** Listen for one server event on this screen's socket (for example, its own account's events). */
+export function useSocketEvent(event: string, handler: (payload: any) => void): void {
+  const latest = useRef(handler);
+  latest.current = handler;
+  useEffect(() => {
+    const s = connection();
+    const listener = (payload: unknown): void => latest.current(payload);
+    s.on(event, listener);
+    return () => {
+      s.off(event, listener);
+    };
+  }, [event]);
+}
+
+/** Reopen the socket so its handshake carries the current sign-in (after login or logout). */
+export function reconnectSocket(): void {
+  if (socket) {
+    socket.disconnect().connect();
+  }
+}
+
+/** Real input happened on this screen: the server stamps the account as active (it throttles). */
+export function sendActivity(): void {
+  connection().emit('activity');
+}
+
 /**
  * Subscribe to live events for a set of departments. Handlers are read from a
  * ref, so they can close over fresh state without resubscribing. A `connect`

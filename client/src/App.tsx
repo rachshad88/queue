@@ -19,10 +19,10 @@ import { Users } from './pages/Users';
 type Gate = 'any' | 'admin' | 'superadmin';
 
 function Protected({ gate = 'any', children }: { gate?: Gate; children: ReactNode }) {
-  const { user } = useSession();
+  const { user, endReason } = useSession();
   const location = useLocation();
   if (!user) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+    return <Navigate to={endReason ? `/login?reason=${endReason}` : '/login'} replace state={{ from: location.pathname }} />;
   }
   // A kiosk-mode login only hands out tickets.
   if (user.view_mode === 'for_customer') {

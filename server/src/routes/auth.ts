@@ -5,7 +5,7 @@ import { cache } from '../cache';
 import { config } from '../config';
 import { departments, users } from '../db';
 import { csrfToken, isRevoked, throttle } from '../middleware/auth';
-import { queueUpdated } from '../realtime';
+import { queueUpdated, recheckSessions } from '../realtime';
 import { assertSingleLogin, clearLoginToken, idleMinutesFor, isExempt, registerLoginToken, updateUserActivity } from '../services/singleLogin';
 import { releaseSectionsForUser, releaseStaleSections } from '../services/stations';
 import { clientIp, isInactive, str, trimmed } from '../util';
@@ -106,6 +106,8 @@ authRouter.post('/login', throttle('login', config.throttle.login, (req) => `${c
     const token = randomBytes(32).toString('hex');
     req.session.login_token = token;
     await registerLoginToken(user._id, token);
+    // Any other screen on this account is signed out right away, over its socket.
+    void recheckSessions(user._id);
   }
   await updateUserActivity(user._id, true);
 

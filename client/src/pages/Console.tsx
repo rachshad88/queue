@@ -46,6 +46,13 @@ function shortestIds(targets: (Target & { disabled: boolean })[]): number[] {
   return shortest.length <= 2 ? shortest : [];
 }
 
+type StatusFilter = 'all' | 'waiting' | 'hold';
+const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'waiting', label: 'Waiting' },
+  { value: 'hold', label: 'Hold' },
+];
+
 export function Console() {
   const { user, config, refresh } = useSession();
   const toast = useToast();
@@ -55,11 +62,14 @@ export function Console() {
   const info: Record<string, any> | null = infoQuery.data?.department_id !== undefined ? infoQuery.data : null;
   const [busy, setBusy] = useState(false);
   /** No queue action can be decided without the server; buttons pause while offline. */
-  const locked = busy || !useServerOnline();
+  // The hook must run on every render (never behind `busy ||`), or React crashes.
+  const online = useServerOnline();
+  const locked = busy || !online;
   const [transferTargets, setTransferTargets] = useState<Target[] | null>(null);
   const [approveRow, setApproveRow] = useState<Row | null>(null);
   const [poolPick, setPoolPick] = useState<{ department_id: number; queue_id: number; queue_number: string } | null>(null);
   const [returnCode, setReturnCode] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [changePw, setChangePw] = useState(false);
   const [newPw, setNewPw] = useState('');
   const [takeover, setTakeover] = useState({ department_id: 0, section_id: 0 });
@@ -114,6 +124,8 @@ export function Console() {
   const serving: string | null = q?.serving_queue_number ?? null;
   const rows: Row[] = q?.queues ?? [];
   const unattendedCount = rows.filter((r) => r.unattended).length;
+  const countFor = (filter: StatusFilter): number => (filter === 'all' ? rows.length : rows.filter((r) => r.status === filter && !r.unattended).length);
+  const shownRows = statusFilter === 'all' ? rows : rows.filter((r) => r.status === statusFilter && !r.unattended);
   /** One patient at a time: nobody new until the current one is finished or transferred. */
   const finishFirstHint = serving ? `Finish or transfer ${serving} first.` : undefined;
 
@@ -276,6 +288,13 @@ export function Console() {
         <div>
           <div className="card-head">
             <h2 className="grow">Queue</h2>
+            <div className="segmented" role="group" aria-label="Show tickets by status">
+              {STATUS_FILTERS.map((f) => (
+                <button key={f.value} type="button" className={statusFilter === f.value ? 'on' : ''} aria-pressed={statusFilter === f.value} onClick={() => setStatusFilter(f.value)}>
+                  {f.label} ({countFor(f.value)})
+                </button>
+              ))}
+            </div>
             <span className="muted">Today's tickets</span>
           </div>
           <div className="table-wrap">
@@ -284,10 +303,10 @@ export function Console() {
                 <tr><th>Number</th><th>Type</th><th>Status</th><th>Issued</th><th>Issued by</th><th className="right">Actions</th></tr>
               </thead>
               <tbody>
-                {rows.length === 0 && (
-                  <tr><td colSpan={6} className="empty">No tickets from today are in this queue.</td></tr>
+                {shownRows.length === 0 && (
+                  <tr><td colSpan={6} className="empty">{statusFilter === 'all' ? 'No tickets from today are in this queue.' : statusFilter === 'hold' ? 'No tickets are on hold.' : 'No tickets are waiting.'}</td></tr>
                 )}
-                {rows.map((row) => (
+                {shownRows.map((row) => (
                   <tr key={row.id} className={row.unattended ? 'is-unattended' : row.status === 'serving' ? 'is-serving' : ''}>
                     <td><strong>{row.queue_number}</strong></td>
                     <td><CategoryBadge category={row.category} /></td>
@@ -311,32 +330,35 @@ export function Console() {
                     </td>
                     <td>{row.issued_by_name || <span className="muted">Kiosk</span>}</td>
                     <td className="right nowrap">
+                      <div className="row-actions">
                       {row.unattended && (
                         <>
-                          <button className="btn btn-sm" disabled={locked || !!serving} title={finishFirstHint} onClick={() => void act('/queue-action', { action: 'takeover', queue_id: row.id })}>Take over</button>{' '}
+                          <button className="btn btn-sm" disabled={locked || !!serving} title={finishFirstHint} onClick={() => void act('/queue-action', { action: 'takeover', queue_id: row.id })}><Icon name="takeover" size={15} />Take over</button>
                           <button
                             className="btn btn-sm"
                             disabled={locked}
                             onClick={() => window.confirm(`Return ${row.queue_number} to the queue? They keep their original place in line.`) && void act('/queue-action', { action: 'return', queue_id: row.id })}
                           >
+                            <Icon name="undo" size={15} />
                             Return to queue
                           </button>
                         </>
                       )}
                       {row.status === 'waiting' && (
                         <>
-                          <button className="btn btn-sm" disabled={locked || !!serving} title={finishFirstHint} onClick={() => setApproveRow(row)}>Serve</button>{' '}
-                          <button className="btn btn-sm" disabled={locked} onClick={() => void act('/queue-action', { action: 'hold', queue_id: row.id })}>Hold</button>{' '}
+                          <button className="btn btn-sm" disabled={locked || !!serving} title={finishFirstHint} onClick={() => setApproveRow(row)}><Icon name="play" size={15} />Serve</button>
+                          <button className="btn btn-sm" disabled={locked} onClick={() => void act('/queue-action', { action: 'hold', queue_id: row.id })}><Icon name="pause" size={15} />Hold</button>
                         </>
                       )}
                       {row.status === 'hold' && (
                         <>
-                          <button className="btn btn-sm" disabled={locked} onClick={() => void act('/queue-action', { action: 'unhold', queue_id: row.id })}>Unhold</button>{' '}
+                          <button className="btn btn-sm" disabled={locked} onClick={() => void act('/queue-action', { action: 'unhold', queue_id: row.id })}><Icon name="play" size={15} />Unhold</button>
                         </>
                       )}
                       {(row.status === 'waiting' || row.status === 'hold') && (
-                        <button className="btn btn-sm" disabled={locked} onClick={() => window.confirm(`Remove ${row.queue_number} from the queue?`) && void act('/queue-action', { action: 'remove', queue_id: row.id })}>Remove</button>
+                        <button className="btn btn-sm btn-remove" disabled={locked} onClick={() => window.confirm(`Remove ${row.queue_number} from the queue?`) && void act('/queue-action', { action: 'remove', queue_id: row.id })}><Icon name="trash" size={15} />Remove</button>
                       )}
+                      </div>
                     </td>
                   </tr>
                 ))}

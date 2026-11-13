@@ -3,6 +3,7 @@ import { createApp } from './app';
 import { config } from './config';
 import { connect, disconnect } from './db';
 import { attachRealtime } from './realtime';
+import { sessionMiddleware } from './session';
 import { connectCache } from './sharedCache';
 
 async function main(): Promise<void> {
@@ -12,7 +13,7 @@ async function main(): Promise<void> {
   await connect();
   await connectCache();
   const server = createServer(createApp());
-  attachRealtime(server);
+  attachRealtime(server, sessionMiddleware());
   server.on('error', (error: NodeJS.ErrnoException) => {
     console.error(error.code === 'EADDRINUSE' ? `Port ${config.port} is already in use. Set PORT in .env to a free port.` : error);
     process.exit(1);

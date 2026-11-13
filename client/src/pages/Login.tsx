@@ -5,6 +5,7 @@ import { api } from '../api';
 import { beginSession, useSession, type SessionUser } from '../auth';
 import { prefetchFor } from '../prefetch';
 import { OfflineBanner } from '../components/OfflineBanner';
+import { LandingJourney, useScrollMotion, Walker } from './LoginJourney';
 
 const REASONS: Record<string, string> = {
   another_device: 'You were signed out because this account signed in on another device.',
@@ -12,25 +13,9 @@ const REASONS: Record<string, string> = {
   revoked: 'You were signed out because an administrator changed or deactivated your account.',
 };
 
-const STEPS = [
-  { title: 'Take a number', text: 'Tap Regular, Priority or Emergency at the kiosk. Your ticket prints right away.' },
-  { title: 'Wait and watch', text: 'Sit in the waiting area. The wall monitor shows every window and who it is serving.' },
-  { title: 'Hear your number', text: 'Your number is shown and called aloud with the window you should go to.' },
-  { title: 'Next service', text: 'Staff pass you to the clinic, laboratory or pharmacy with the same ticket until you are done.' },
-];
-
-const TICKETS = [
-  { kind: 'regular', name: 'Regular', code: 'R', who: 'Everyone else', text: 'Served in order of arrival at every window.' },
-  { kind: 'priority', name: 'Priority', code: 'P', who: 'Senior citizens, PWD, pregnant women', text: 'Called ahead of regular patients at the priority windows.' },
-  { kind: 'emergency', name: 'Emergency', code: 'E', who: 'Patients needing urgent care', text: 'Called first at the priority windows.' },
-];
-
-const PRIORITY_WINDOWS = ['Waiting Area 1', 'Waiting Area 2', 'Admission 3', 'Admission 4'];
-
 type LiveConfig = { departments?: { id: number; name: string }[]; admission_sections?: string[]; waiting_sections?: string[] };
 
 const scrollToId = (id: string): void => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-const pad = (value: number): string => String(value).padStart(2, '0');
 
 const manilaClock = (): { time: string; date: string } => {
   const now = new Date();
@@ -180,56 +165,6 @@ function PixelMoto({ className, color }: { className: string; color: string }) {
   );
 }
 
-/** Roadside buildings that sweep past as the ambulance drives on. */
-function PixelHouse({ className }: { className: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" shapeRendering="crispEdges">
-      <rect x="8" y="0" width="4" height="2" fill="#7a2e2e" />
-      <rect x="5" y="2" width="10" height="2" fill="#a33b3b" />
-      <rect x="2" y="4" width="16" height="2" fill="#a33b3b" />
-      <rect x="0" y="6" width="20" height="2" fill="#7a2e2e" />
-      <rect x="2" y="8" width="16" height="12" fill="#f2e3c6" />
-      <rect x="2" y="8" width="16" height="1" fill="#d9c7a5" />
-      <rect x="4" y="10" width="4" height="4" fill="#5aa7d6" />
-      <rect x="12" y="10" width="4" height="4" fill="#5aa7d6" />
-      <rect x="9" y="13" width="3" height="7" fill="#6b4226" />
-    </svg>
-  );
-}
-
-function PixelStore({ className }: { className: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 20" shapeRendering="crispEdges">
-      <rect x="0" y="0" width="24" height="5" fill="#2f6e8c" />
-      <rect x="2" y="1" width="20" height="3" fill="#ffd84a" />
-      <rect x="0" y="5" width="24" height="15" fill="#e9eef2" />
-      {[0, 4, 8, 12, 16, 20].map((x) => (
-        <rect key={x} x={x} y="6" width="2" height="3" fill="#e63946" />
-      ))}
-      {[2, 6, 10, 14, 18, 22].map((x) => (
-        <rect key={x} x={x} y="6" width="2" height="3" fill="#ffffff" />
-      ))}
-      <rect x="2" y="11" width="8" height="6" fill="#5aa7d6" />
-      <rect x="14" y="11" width="6" height="9" fill="#3a5568" />
-      <rect x="0" y="19" width="24" height="1" fill="#9aa3ab" />
-    </svg>
-  );
-}
-
-function PixelTower({ className }: { className: string }) {
-  return (
-    <svg className={className} viewBox="0 0 16 34" shapeRendering="crispEdges">
-      <rect x="6" y="0" width="1" height="3" fill="#4b4566" />
-      <rect x="0" y="3" width="16" height="31" fill="#5c6b84" />
-      <rect x="0" y="3" width="2" height="31" fill="#4a5770" />
-      {[5, 9, 13, 17, 21, 25].flatMap((y) =>
-        [3, 7, 11].map((x) => <rect key={`${x}-${y}`} x={x} y={y} width="2" height="2" className={(x + y) % 3 === 0 ? 'arcade-window' : undefined} fill="#ffe14d" />),
-      )}
-      <rect x="6" y="29" width="4" height="5" fill="#2b3346" />
-    </svg>
-  );
-}
-
 /** A small pixel town on the horizon, in front of the mountains. */
 function PixelTown({ className }: { className: string }) {
   const blocks: [number, number, number][] = [
@@ -295,6 +230,8 @@ export function Login() {
     void api<LiveConfig>('/live-config').then((config) => setServices(config)).catch(() => setServices(null));
   }, []);
   useReveal();
+  const rootRef = useRef<HTMLDivElement>(null);
+  useScrollMotion(rootRef);
   const { user, refresh } = useSession();
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -350,7 +287,7 @@ export function Login() {
   const tickerItems = ['Take a number', 'Watch the wall', 'Hear your number', 'Proceed to your window', ...departmentNames];
 
   return (
-    <div className={`arcade${boosting ? ' arcade-boost' : ''}`}>
+    <div className={`arcade${boosting ? ' arcade-boost' : ''}`} ref={rootRef}>
       <OfflineBanner detail="Cannot reach the queue server. Sign-in will work again once it is back." />
       <div className="arcade-crt" aria-hidden="true" />
       {arrived && <Arrival />}
@@ -369,6 +306,7 @@ export function Login() {
           <a className="arcade-btn arcade-btn-ghost" href={`${BASE}/live`}>Live</a>
           <button type="button" className="arcade-btn" onClick={goToSignIn}>Sign in</button>
         </div>
+        <span className="arcade-nav-runner" aria-hidden="true"><Walker /></span>
       </header>
 
       <section className="arcade-hero">
@@ -387,14 +325,6 @@ export function Login() {
           <PixelTown className="arcade-town right" />
           <div className="arcade-grid" />
           <div className="arcade-warp"><span /></div>
-          <div className="arcade-roadside">
-            <PixelHouse className="arcade-bldg side-left bldg-1" />
-            <PixelTower className="arcade-bldg side-left bldg-2" />
-            <PixelStore className="arcade-bldg side-left bldg-3" />
-            <PixelStore className="arcade-bldg side-right bldg-4" />
-            <PixelHouse className="arcade-bldg side-right bldg-5" />
-            <PixelTower className="arcade-bldg side-right bldg-6" />
-          </div>
           <div className="arcade-highway">
             <svg className="arcade-highway-road" viewBox="0 0 100 100" preserveAspectRatio="none">
               <polygon points="50,0 2.5,100 97.5,100" />
@@ -476,76 +406,7 @@ export function Login() {
         </div>
       </div>
 
-      <section className="arcade-section" id="how">
-        <div className="arcade-wrap">
-          <p className="arcade-kicker" data-reveal>How to play</p>
-          <h2 className="arcade-heading" data-reveal>Four levels from the door to the doctor</h2>
-          <ol className="arcade-levels">
-            {STEPS.map((step, index) => (
-              <li key={step.title} data-reveal style={{ transitionDelay: `${index * 90}ms` }}>
-                <span className="arcade-level-tag">Level {pad(index + 1)}</span>
-                <h3>{step.title}</h3>
-                <p>{step.text}</p>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
-
-      <section className="arcade-section arcade-section-alt" id="tickets">
-        <div className="arcade-wrap">
-          <p className="arcade-kicker" data-reveal>Select your ticket</p>
-          <h2 className="arcade-heading" data-reveal>Choose your line</h2>
-          <div className="arcade-players">
-            {TICKETS.map((ticket, index) => (
-              <article key={ticket.kind} className={`arcade-player ${ticket.kind}`} data-reveal style={{ transitionDelay: `${index * 110}ms` }}>
-                <div className="arcade-player-badge" aria-hidden="true">{ticket.code}</div>
-                <span className="arcade-player-name">{ticket.name}</span>
-                <h3>{ticket.who}</h3>
-                <p>{ticket.text}</p>
-              </article>
-            ))}
-          </div>
-          <div className="arcade-tip" data-reveal>
-            <b>Tip:</b> {PRIORITY_WINDOWS.join(', ')} call every ticket type. The other windows call regular tickets only,
-            so regular patients keep moving even on busy days.
-          </div>
-        </div>
-      </section>
-
-      <section className="arcade-section" id="services">
-        <div className="arcade-wrap">
-          <p className="arcade-kicker" data-reveal>Stage select</p>
-          <h2 className="arcade-heading" data-reveal>One ticket, every stage</h2>
-          <p className="arcade-sub" data-reveal>Staff transfer your ticket between these services, so you never need to line up again.</p>
-          {departmentNames.length > 0 ? (
-            <ul className="arcade-stages" data-reveal>
-              {departmentNames.map((name, index) => (
-                <li key={name} style={{ animationDelay: `${index * 140}ms` }}>{name}</li>
-              ))}
-            </ul>
-          ) : (
-            <p className="arcade-sub">The list of services could not be loaded right now.</p>
-          )}
-          {services && (
-            <div className="arcade-scores" data-reveal>
-              <div><span>Waiting windows</span><b>{pad(services.waiting_sections?.length ?? 0)}</b></div>
-              <div><span>Admission windows</span><b>{pad(services.admission_sections?.length ?? 0)}</b></div>
-              <div><span>Services</span><b>{pad(departmentNames.length)}</b></div>
-            </div>
-          )}
-        </div>
-      </section>
-
-      <section className="arcade-continue">
-        <div className="arcade-wrap arcade-continue-inner" data-reveal>
-          <div>
-            <h2>Continue?</h2>
-            <p>Open the live monitor on any screen in the waiting area. It shows every window and announces each number aloud.</p>
-          </div>
-          <a className="arcade-btn arcade-btn-big" href={`${BASE}/live`}>▶ Live monitor</a>
-        </div>
-      </section>
+      <LandingJourney departmentNames={departmentNames} services={services} onSignIn={goToSignIn} />
 
       <footer className="arcade-footer">
         <div className="arcade-wrap arcade-footer-inner">
