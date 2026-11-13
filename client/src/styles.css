@@ -397,13 +397,6 @@ tr.is-unattended td { background: var(--amber-soft); }
 .toast.leaving { animation: toast-out 220ms ease-in both; }
 
 /* ---- Login, window chooser ------------------------------------------------------ */
-.login-screen {
-  min-height: 100%;
-  display: grid;
-  place-items: center;
-  padding: 1.5rem;
-  background-color: #2a0306;
-}
 .login-card {
   width: min(400px, 100%);
   padding: 2rem;
@@ -590,3 +583,485 @@ tr.is-unattended td { background: var(--amber-soft); }
   .kiosk { background: #fff; }
   .kiosk-card, .ticket { box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; background: #fff; animation: none; }
 }
+
+/* ---- Landing page: arcade attract mode ---------------------------------------- */
+@font-face {
+  font-family: 'Press Start 2P';
+  src: url('/fonts/press-start/press-start-2p-latin-400-normal.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+.arcade {
+  /* Arcade racing palette taken from the scenery: sky, grass, asphalt, sun, ambulance red. */
+  --a-bg: #2e2e36;
+  --a-bg-2: #3b3b44;
+  --a-panel: #1f7a3d;
+  --a-ink: #ffffff;
+  --a-dim: #d9dee8;
+  --a-pink: #ff4757;
+  --a-cyan: #6cc0ff;
+  --a-yellow: #ffd84a;
+  --a-red: #ff4757;
+  --a-green: #7ee07a;
+  --a-sky: #3f97e8;
+  --a-grass: #55a94e;
+  --a-sign: #1f7a3d;
+  --a-sign-edge: #0f3d1f;
+  --a-night: #1b2a4a;
+  --a-curb: repeating-linear-gradient(90deg, #ff4757 0 40px, #ffffff 40px 80px);
+  --a-checker: repeating-conic-gradient(#12051e 0 25%, #ffffff 0 50%);
+  --a-pixel: 'Press Start 2P', ui-monospace, monospace;
+  position: relative;
+  min-height: 100%;
+  overflow-x: clip;
+  background: var(--a-bg);
+  color: var(--a-ink);
+}
+.arcade h1, .arcade h2, .arcade h3 { font-family: var(--a-pixel); font-weight: 400; letter-spacing: 0; line-height: 1.35; }
+.arcade-wrap { width: min(1120px, 100%); margin: 0 auto; padding: 0 clamp(1rem, 4vw, 3rem); }
+
+/* CRT: scanlines, vignette and a faint flicker over the whole page. */
+.arcade-crt {
+  position: fixed; inset: 0; z-index: 50; pointer-events: none;
+  background:
+    repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0) 0 2px, rgba(0, 0, 0, 0.22) 2px 3px),
+    radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.55) 100%);
+  animation: crt-flicker 6s infinite;
+}
+@keyframes crt-flicker { 0%, 100% { opacity: 0.9; } 48% { opacity: 0.9; } 50% { opacity: 0.75; } 52% { opacity: 0.92; } 80% { opacity: 0.85; } }
+
+/* Buttons: chunky pixel buttons that press down like a cabinet button. */
+.arcade-btn {
+  font-family: var(--a-pixel); font-size: 0.68rem; text-transform: uppercase; line-height: 1;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  padding: 0.8rem 1rem; color: #12051e; background: var(--a-yellow); border: 0; cursor: pointer; text-decoration: none;
+  box-shadow: 0 -3px 0 0 #12051e inset, 0 4px 0 0 #a8860f, 0 0 0 3px #12051e, 0 4px 0 3px #12051e;
+  transition: transform 80ms steps(2), box-shadow 80ms steps(2), filter 120ms;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
+.arcade-btn:hover:not(:disabled) { filter: brightness(1.12) drop-shadow(0 0 10px rgba(255, 225, 77, 0.6)); }
+.arcade-btn:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 -3px 0 0 #12051e inset, 0 0 0 0 #a8860f, 0 0 0 3px #12051e; }
+.arcade-btn:disabled { opacity: 0.6; cursor: wait; }
+.arcade-btn:focus-visible { outline: 3px solid var(--a-cyan); outline-offset: 5px; }
+.arcade-btn-ghost { background: transparent; color: var(--a-cyan); box-shadow: 0 0 0 3px var(--a-cyan), 0 0 14px rgba(41, 240, 255, 0.45); }
+.arcade-btn-ghost:hover:not(:disabled) { background: rgba(41, 240, 255, 0.12); filter: none; }
+.arcade-btn-ghost:active:not(:disabled) { box-shadow: 0 0 0 3px var(--a-cyan); }
+.arcade-btn-big { font-size: 0.8rem; padding: 1.05rem 1.35rem; }
+
+/* Nav */
+.arcade-nav {
+  position: sticky; top: 0; z-index: 40; display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 0.9rem clamp(1rem, 4vw, 3rem); background: rgba(11, 7, 22, 0.82); border-bottom: 3px solid #2a1a4a;
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+.arcade-brand { display: flex; align-items: center; gap: 0.7rem; font-family: var(--a-pixel); font-size: 0.85rem; color: var(--a-ink); }
+.arcade-brand em { font-style: normal; color: var(--a-pink); text-shadow: 0 0 10px rgba(255, 61, 242, 0.7); margin-left: 0.25em; }
+.arcade-brand img { width: 36px; height: 36px; image-rendering: pixelated; box-shadow: 0 0 0 3px var(--a-cyan), 0 0 14px rgba(41, 240, 255, 0.5); }
+.arcade-menu { display: flex; gap: 0.2rem; }
+.arcade-menu button, .arcade-footer-links button, .arcade-footer-links a {
+  font-family: var(--a-pixel); font-size: 0.6rem; text-transform: uppercase; color: var(--a-dim); background: none; border: 0; cursor: pointer;
+  padding: 0.6rem 0.75rem; text-decoration: none;
+}
+.arcade-menu button:hover, .arcade-footer-links button:hover, .arcade-footer-links a:hover { color: var(--a-yellow); }
+.arcade-menu button:hover::before { content: '▶ '; }
+.arcade-nav-actions { display: flex; gap: 0.9rem; align-items: center; }
+
+/* Hero: a daytime countryside. Sky, clouds, a sun, mountains on the horizon,
+   and grass rushing past on both sides of the road. The horizon sits at
+   --horizon from the bottom so the road, grass and mountains all line up. */
+.arcade-hero {
+  --amb-w: min(clamp(280px, 28vw, 420px), 78vw); --horizon: calc(var(--amb-w) * 1.3);
+  position: relative; min-height: calc(100svh - 66px); display: grid; align-items: center; isolation: isolate; overflow: hidden;
+  background: linear-gradient(to bottom, #3f97e8 0%, #7cc2fb calc(100% - var(--horizon) - 120px), #cfeaff calc(100% - var(--horizon)), #9ccf7f calc(100% - var(--horizon)), #4fa64a 100%);
+}
+.arcade-sky { position: absolute; inset: 0; z-index: -1; }
+.arcade-stars {
+  position: absolute; inset: -50% 0 0; opacity: 0.9;
+  background-image:
+    radial-gradient(2px 2px at 20px 30px, #fff 50%, transparent 51%),
+    radial-gradient(2px 2px at 140px 80px, #29f0ff 50%, transparent 51%),
+    radial-gradient(2px 2px at 260px 160px, #fff 50%, transparent 51%),
+    radial-gradient(3px 3px at 330px 40px, #ffe14d 50%, transparent 51%),
+    radial-gradient(2px 2px at 90px 220px, #ff3df2 50%, transparent 51%),
+    radial-gradient(2px 2px at 380px 260px, #fff 50%, transparent 51%);
+  background-size: 400px 300px;
+  animation: stars-drift 40s linear infinite, stars-twinkle 1.6s steps(2) infinite;
+}
+@keyframes stars-drift { to { transform: translateY(300px); } }
+@keyframes stars-twinkle { 50% { opacity: 0.55; } }
+.arcade-sun {
+  position: absolute; right: 7%; top: 9%; width: clamp(70px, 8vw, 120px); aspect-ratio: 1; background: #fff3a6;
+  clip-path: polygon(30% 0, 70% 0, 70% 10%, 90% 10%, 90% 30%, 100% 30%, 100% 70%, 90% 70%, 90% 90%, 70% 90%, 70% 100%, 30% 100%, 30% 90%, 10% 90%, 10% 70%, 0 70%, 0 30%, 10% 30%, 10% 10%, 30% 10%);
+  box-shadow: inset -10px -10px 0 #ffd84a;
+  filter: drop-shadow(0 0 30px rgba(255, 236, 140, 0.9));
+  animation: sun-pulse 4s ease-in-out infinite;
+}
+@keyframes sun-pulse { 50% { filter: drop-shadow(0 0 46px rgba(255, 236, 140, 1)); } }
+.arcade-cloud { position: absolute; left: 0; width: clamp(90px, 11vw, 170px); height: auto; image-rendering: pixelated; animation: cloud-drift 80s linear infinite; }
+.arcade-cloud rect { fill: #fff; }
+.arcade-cloud rect.shade { fill: #d7ecff; }
+@keyframes cloud-drift { from { transform: translateX(-30vw); } to { transform: translateX(110vw); } }
+.arcade-mountains { position: absolute; left: 0; right: 0; bottom: calc(var(--horizon) - 1px); height: clamp(80px, 12vw, 180px); }
+.arcade-mountains svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.arcade-mountains .far { fill: #8fb0d6; }
+.arcade-mountains .far-snow { fill: #eef6ff; }
+.arcade-mountains .near { fill: #4f8f5a; }
+.arcade-mountains .near-shade { fill: #3f7a4b; }
+.arcade-grid {
+  position: absolute; left: -50%; right: -50%; bottom: 0; height: var(--horizon);
+  background-image: linear-gradient(to bottom, #62b85a 0 50%, #55a94e 50% 100%);
+  background-size: 100% 60px;
+  transform: perspective(320px) rotateX(62deg); transform-origin: top;
+  -webkit-mask: linear-gradient(to bottom, transparent, #000 30%); mask: linear-gradient(to bottom, transparent, #000 30%);
+  animation: grid-run 1.2s linear infinite;
+}
+@keyframes grid-run { to { background-position: 0 60px; } }
+
+/* Pixel ambulance driving away down the neon road. */
+.arcade-road { position: absolute; left: 50%; bottom: clamp(0.5rem, 3vh, 2rem); width: var(--amb-w); transform: translateX(-50%); animation: amb-sway 7s ease-in-out infinite; }
+.arcade-ambulance { position: relative; animation: amb-bounce 280ms steps(2) infinite; }
+.arcade-ambulance svg { display: block; width: 100%; height: auto; image-rendering: pixelated; filter: drop-shadow(0 6px 0 rgba(0, 0, 0, 0.22)); }
+.arcade-ambulance .siren-red { fill: #ff2747; animation: siren 520ms steps(1) infinite; }
+.arcade-ambulance .siren-blue { fill: #2b7bff; animation: siren 520ms steps(1) 260ms infinite; }
+.arcade-ambulance .tail { fill: #ff2747; animation: tail-glow 1.4s steps(2) infinite; }
+.arcade-ambulance .tread { fill: #3a3350; animation: tread 160ms steps(1) infinite; }
+.arcade-siren-glow { position: absolute; top: -38%; width: 90%; aspect-ratio: 1; border-radius: 50%; pointer-events: none; mix-blend-mode: screen; filter: blur(12px); }
+.arcade-siren-glow.red { left: -18%; background: radial-gradient(circle, rgba(255, 39, 71, 0.75), transparent 62%); animation: siren 520ms steps(1) infinite; }
+.arcade-siren-glow.blue { right: -18%; background: radial-gradient(circle, rgba(43, 123, 255, 0.8), transparent 62%); animation: siren 520ms steps(1) 260ms infinite; }
+.arcade-puff { position: absolute; bottom: 8%; left: 16%; width: 4%; aspect-ratio: 1; background: rgba(220, 210, 255, 0.35); opacity: 0; animation: puff 1.2s steps(6) infinite; }
+.arcade-puff:nth-of-type(4) { animation-delay: 400ms; left: 10%; }
+.arcade-puff:nth-of-type(5) { animation-delay: 800ms; left: 16%; }
+@keyframes amb-sway { 0%, 100% { transform: translateX(-50%); } 25% { transform: translateX(calc(-50% - var(--amb-w) * 0.1)); } 75% { transform: translateX(calc(-50% + var(--amb-w) * 0.1)); } }
+@keyframes amb-bounce { 50% { transform: translateY(-6px); } }
+@keyframes siren { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0.15; } }
+@keyframes tail-glow { 50% { filter: brightness(1.5); } }
+@keyframes tread { 50% { fill: #0a0612; } }
+@keyframes puff { 0% { opacity: 0.6; transform: translate(0, 0) scale(1); } 100% { opacity: 0; transform: translate(-30px, -24px) scale(1.8); } }
+/* Highway: drawn from the horizon (where the grid fades in) to the bottom edge.
+   Everything on it moves along a straight line from that vanishing point while
+   growing, eased so it speeds up as it nears the viewer, like real perspective. */
+.arcade-highway {
+  position: absolute; left: 50%; bottom: 0; width: calc(var(--amb-w) * 4); height: calc(var(--amb-w) * 1.3); margin-left: calc(var(--amb-w) * -2); container-type: size;
+  -webkit-mask: linear-gradient(to bottom, transparent, #000 22%); mask: linear-gradient(to bottom, transparent, #000 22%);
+}
+.arcade-highway-road { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.arcade-highway-road polygon { fill: #4a4a54; }
+.arcade-highway-road line { stroke: #f4f4f4; stroke-width: 3; vector-effect: non-scaling-stroke;  }
+.arcade-dash, .arcade-car { position: absolute; left: 50%; top: 0; transform-origin: 50% 100%; will-change: transform; }
+.arcade-dash { width: 0.8cqw; height: 14cqh; margin-left: -0.4cqw; margin-top: -14cqh; background: #f4f1fb; box-shadow: 0 0 8px rgba(255, 255, 255, 0.6); animation: 1.2s cubic-bezier(0.6, 0, 0.95, 0.6) infinite; }
+.arcade-dash.left { animation-name: dash-left; }
+.arcade-dash.right { animation-name: dash-right; }
+@keyframes dash-left { from { transform: translate(0, 0) scale(0.02); } to { transform: translate(-20.6cqw, 130cqh) scale(1.3); } }
+@keyframes dash-right { from { transform: translate(0, 0) scale(0.02); } to { transform: translate(20.6cqw, 130cqh) scale(1.3); } }
+.arcade-car { width: 20cqw; height: auto; margin-left: -10cqw; translate: 0 -100%; transform: scale(0); image-rendering: pixelated; filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.6)); animation-iteration-count: infinite; }
+.arcade-car.lane-left { animation-name: car-left; }
+.arcade-car.lane-right { animation-name: car-right; }
+.arcade-car.car-a { animation-duration: 6s; }
+.arcade-car.car-b { animation-duration: 7.5s; animation-delay: 2.2s; }
+.arcade-car.car-c { animation-duration: 6s; animation-delay: 3.4s; }
+@keyframes car-left {
+  0% { transform: translate(0, 0) scale(0.02); animation-timing-function: cubic-bezier(0.62, 0, 0.96, 0.55); }
+  40% { transform: translate(-31.7cqw, 100cqh) scale(1); opacity: 1; }
+  46%, 100% { transform: translate(-36.5cqw, 115cqh) scale(1.15); opacity: 0; }
+}
+@keyframes car-right {
+  0% { transform: translate(0, 0) scale(0.02); animation-timing-function: cubic-bezier(0.62, 0, 0.96, 0.55); }
+  36% { transform: translate(31.7cqw, 100cqh) scale(1); opacity: 1; }
+  42%, 100% { transform: translate(36.5cqw, 115cqh) scale(1.15); opacity: 0; }
+}
+.arcade-hero-inner {
+  width: min(1180px, 100%); margin: 0 auto; padding: clamp(2rem, 6vh, 4rem) clamp(1rem, 4vw, 3rem) calc(var(--amb-w) * 0.85 + 3.5rem);
+  display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 410px); gap: clamp(2rem, 6vw, 5rem); align-items: center; scroll-margin-top: 80px;
+}
+.arcade-hero-copy { padding: clamp(1.2rem, 3vw, 2rem); background: rgba(12, 8, 28, 0.8); box-shadow: 0 -4px 0 0 #12051e, 0 4px 0 0 #12051e, -4px 0 0 0 #12051e, 4px 0 0 0 #12051e, 0 18px 40px rgba(0, 0, 0, 0.25); }
+.arcade-hud { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; max-width: 520px; font-family: var(--a-pixel); font-size: 0.62rem; color: var(--a-dim); margin-bottom: 1.6rem; }
+.arcade-hud b { color: var(--a-red); font-weight: 400; margin-left: 0.6em; font-variant-numeric: tabular-nums; text-shadow: 0 0 8px rgba(255, 71, 87, 0.8); }
+.arcade-eyebrow { font-family: var(--a-pixel); font-size: 0.62rem; text-transform: uppercase; color: var(--a-cyan); text-shadow: 0 0 10px rgba(41, 240, 255, 0.7); margin-bottom: 1.2rem; line-height: 1.7; }
+
+/* Title: neon glow with an occasional RGB-split glitch. */
+.arcade-title {
+  position: relative; text-transform: uppercase; font-size: clamp(1.5rem, 3.6vw, 2.7rem) !important; line-height: 1.3 !important; color: #fff; max-width: 15ch;
+  text-shadow: 0 0 6px #fff, 0 0 18px var(--a-pink), 0 0 42px var(--a-pink), 4px 4px 0 #5b0f63;
+  animation: title-in 900ms steps(9) backwards;
+}
+.arcade-title::before, .arcade-title::after { content: attr(data-text); position: absolute; inset: 0; pointer-events: none; text-shadow: none; opacity: 0; }
+.arcade-title::before { color: var(--a-cyan); animation: glitch-a 5s steps(1) infinite; }
+.arcade-title::after { color: var(--a-pink); animation: glitch-b 5s steps(1) infinite; }
+@keyframes title-in { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes glitch-a { 0%, 91%, 100% { opacity: 0; } 92% { opacity: 0.8; transform: translate(-4px, 0); clip-path: inset(10% 0 60% 0); } 94% { opacity: 0.8; transform: translate(3px, 0); clip-path: inset(55% 0 20% 0); } 96% { opacity: 0; } }
+@keyframes glitch-b { 0%, 92%, 100% { opacity: 0; } 93% { opacity: 0.8; transform: translate(4px, 0); clip-path: inset(40% 0 35% 0); } 95% { opacity: 0.8; transform: translate(-3px, 0); clip-path: inset(75% 0 5% 0); } 97% { opacity: 0; } }
+.arcade-lede { margin-top: 1.4rem; font-size: clamp(1rem, 1.4vw, 1.12rem); line-height: 1.65; color: var(--a-dim); max-width: 46ch; }
+.arcade-actions { margin-top: 2rem; display: flex; gap: 1.2rem; flex-wrap: wrap; align-items: center; }
+.arcade-blink { margin-top: 2.2rem; font-family: var(--a-pixel); font-size: 0.75rem; text-transform: uppercase; color: var(--a-yellow); text-shadow: 0 0 10px rgba(255, 225, 77, 0.8); animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* Sign-in cabinet */
+.arcade-cabinet {
+  position: relative; padding: 1.6rem; background: linear-gradient(to bottom, #1e1238, #120a24);
+  box-shadow: 0 0 0 4px #12051e, 0 0 0 7px var(--a-pink), 0 0 0 10px #12051e, 0 0 40px rgba(255, 61, 242, 0.45), 0 30px 60px rgba(0, 0, 0, 0.6);
+  animation: cabinet-in 700ms steps(7) 200ms backwards, cabinet-glow 3s ease-in-out infinite;
+}
+@keyframes cabinet-in { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: none; } }
+@keyframes cabinet-glow { 50% { box-shadow: 0 0 0 4px #12051e, 0 0 0 7px var(--a-cyan), 0 0 0 10px #12051e, 0 0 46px rgba(41, 240, 255, 0.45), 0 30px 60px rgba(0, 0, 0, 0.6); } }
+.arcade-cabinet-head { display: flex; align-items: center; gap: 0.9rem; margin-bottom: 1.4rem; padding-bottom: 1.1rem; border-bottom: 3px dashed #3a2766; }
+.arcade-cabinet-head img { width: 52px; height: 52px; box-shadow: 0 0 0 3px var(--a-yellow); }
+.arcade-cabinet-head h2 { font-size: 0.95rem; color: var(--a-yellow); text-transform: uppercase; text-shadow: 0 0 10px rgba(255, 225, 77, 0.6); }
+.arcade-cabinet-head p { font-family: var(--a-pixel); font-size: 0.55rem; text-transform: uppercase; color: var(--a-dim); margin-top: 0.5rem; }
+.arcade-field { display: grid; gap: 0.5rem; margin-bottom: 1rem; }
+.arcade-field span { font-family: var(--a-pixel); font-size: 0.58rem; text-transform: uppercase; color: var(--a-cyan); }
+.arcade-field input {
+  font: 600 1rem ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--a-green); caret-color: var(--a-green);
+  background: #07040f; border: 0; padding: 0.8rem 0.9rem; box-shadow: 0 0 0 3px #3a2766; outline: none; width: 100%;
+  text-shadow: 0 0 6px rgba(61, 255, 143, 0.6);
+}
+.arcade-field input:focus { box-shadow: 0 0 0 3px var(--a-green), 0 0 16px rgba(61, 255, 143, 0.4); }
+.arcade-check { display: flex; align-items: center; gap: 0.6rem; font-size: 0.9rem; color: var(--a-dim); margin-bottom: 1.3rem; cursor: pointer; }
+.arcade-check input { accent-color: var(--a-pink); width: 18px; height: 18px; }
+.arcade-start { width: 100%; }
+.arcade-credit { margin-top: 1.1rem; text-align: center; font-family: var(--a-pixel); font-size: 0.55rem; color: var(--a-dim); text-transform: uppercase; animation: blink 1.4s steps(1) infinite; }
+.arcade-alert { margin-bottom: 1rem; padding: 0.75rem 0.85rem; font-size: 0.88rem; line-height: 1.5; color: #12051e; background: var(--a-yellow); box-shadow: 0 0 0 3px #12051e; }
+.arcade-alert-error { background: var(--a-red); color: #fff; animation: shake 360ms steps(6); }
+@keyframes shake { 20% { transform: translateX(-6px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(4px); } }
+
+/* Marquee ticker */
+.arcade-ticker { overflow: hidden; background: var(--a-yellow); color: #12051e; border-block: 4px solid #12051e; font-family: var(--a-pixel); font-size: 0.7rem; text-transform: uppercase; }
+.arcade-ticker-track { display: flex; width: max-content; padding: 0.85rem 0; animation: ticker 38s linear infinite; }
+.arcade-ticker-track > span { display: flex; white-space: nowrap; }
+.arcade-ticker-track > span > span { padding-right: 2.2rem; }
+@keyframes ticker { to { transform: translateX(-50%); } }
+
+/* Sections */
+.arcade-section { padding: clamp(4rem, 10vw, 7rem) 0; position: relative; scroll-margin-top: 66px; }
+.arcade-section-alt { background: var(--a-bg-2); border-block: 3px solid #2a1a4a; }
+.arcade-kicker { font-family: var(--a-pixel); font-size: 0.62rem; text-transform: uppercase; color: var(--a-pink); text-shadow: 0 0 10px rgba(255, 61, 242, 0.7); margin-bottom: 1rem; }
+.arcade-heading { font-size: clamp(1.1rem, 2.6vw, 1.8rem) !important; text-transform: uppercase; color: #fff; max-width: 24ch; text-shadow: 3px 3px 0 #5b0f63; }
+.arcade-sub { margin-top: 1rem; color: var(--a-dim); font-size: 1.02rem; max-width: 56ch; }
+
+/* Pixel reveal: elements snap in, in a few steps, as they scroll into view. */
+.arcade [data-reveal] { opacity: 0; transform: translateY(24px); transition: opacity 400ms steps(4), transform 400ms steps(4); }
+.arcade [data-reveal].in { opacity: 1; transform: none; }
+
+.arcade-levels { list-style: none; padding: 0; margin: 2.8rem 0 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1.4rem; }
+.arcade-levels li {
+  background: var(--a-panel); padding: 1.4rem;
+  box-shadow: 0 -4px 0 0 #3a2766, 0 4px 0 0 #3a2766, -4px 0 0 0 #3a2766, 4px 0 0 0 #3a2766;
+}
+.arcade-levels li.in { transition: opacity 400ms steps(4), transform 400ms steps(4), box-shadow 160ms; }
+.arcade-levels li:hover { box-shadow: 0 -4px 0 0 var(--a-cyan), 0 4px 0 0 var(--a-cyan), -4px 0 0 0 var(--a-cyan), 4px 0 0 0 var(--a-cyan), 0 0 24px rgba(41, 240, 255, 0.35); }
+.arcade-level-tag { display: inline-block; font-family: var(--a-pixel); font-size: 0.55rem; text-transform: uppercase; color: #12051e; background: var(--a-cyan); padding: 0.4rem 0.55rem; margin-bottom: 1.1rem; }
+.arcade-levels h3, .arcade-player h3 { font-size: 0.72rem; text-transform: uppercase; color: #fff; margin-bottom: 0.8rem; line-height: 1.6; }
+.arcade-levels p, .arcade-player p { color: var(--a-dim); font-size: 0.93rem; line-height: 1.6; }
+
+/* Ticket "character select" */
+.arcade-players { margin-top: 2.8rem; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.6rem; }
+.arcade-player {
+  --c: var(--a-cyan);
+  position: relative; text-align: center; padding: 1.8rem 1.4rem 1.6rem; background: var(--a-panel);
+  box-shadow: 0 -4px 0 0 var(--c), 0 4px 0 0 var(--c), -4px 0 0 0 var(--c), 4px 0 0 0 var(--c);
+}
+.arcade-player.priority { --c: var(--a-yellow); }
+.arcade-player.emergency { --c: var(--a-red); }
+.arcade-player.in { transition: opacity 400ms steps(4), transform 220ms steps(3), box-shadow 160ms; }
+.arcade-player:hover { transform: translateY(-8px); box-shadow: 0 -4px 0 0 var(--c), 0 4px 0 0 var(--c), -4px 0 0 0 var(--c), 4px 0 0 0 var(--c), 0 0 30px var(--c); }
+.arcade-player-badge {
+  width: 72px; height: 72px; margin: 0 auto 1.2rem; display: grid; place-items: center;
+  font-family: var(--a-pixel); font-size: 1.6rem; color: #12051e; background: var(--c);
+  box-shadow: 0 -5px 0 0 #12051e inset, 0 0 22px var(--c);
+  animation: sprite-bob 1s steps(2) infinite;
+}
+.arcade-player.priority .arcade-player-badge { animation-delay: 330ms; }
+.arcade-player.emergency .arcade-player-badge { animation-delay: 660ms; }
+@keyframes sprite-bob { 50% { transform: translateY(-6px); } }
+.arcade-player-name { display: block; font-family: var(--a-pixel); font-size: 0.85rem; text-transform: uppercase; color: var(--c); text-shadow: 0 0 10px var(--c); margin-bottom: 1rem; }
+.arcade-tip { margin-top: 2.2rem; padding: 1.1rem 1.3rem; color: var(--a-ink); background: rgba(41, 240, 255, 0.07); box-shadow: 0 0 0 3px var(--a-cyan); line-height: 1.6; font-size: 0.95rem; }
+.arcade-tip b { font-family: var(--a-pixel); font-size: 0.62rem; font-weight: 400; color: var(--a-cyan); text-transform: uppercase; margin-right: 0.4rem; }
+
+/* Stage select lights cycle like an attract-mode marquee. */
+.arcade-stages { list-style: none; padding: 0; margin: 2.2rem 0 0; display: flex; flex-wrap: wrap; gap: 0.9rem; }
+.arcade-stages li {
+  font-family: var(--a-pixel); font-size: 0.6rem; text-transform: uppercase; padding: 0.85rem 1rem; background: var(--a-panel); color: var(--a-dim);
+  box-shadow: 0 0 0 3px #3a2766;
+  animation: stage-light 1.82s steps(1) infinite;
+}
+@keyframes stage-light { 0%, 7% { color: #12051e; background: var(--a-green); box-shadow: 0 0 0 3px var(--a-green), 0 0 18px rgba(61, 255, 143, 0.7); } 8%, 100% { color: var(--a-dim); background: var(--a-panel); box-shadow: 0 0 0 3px #3a2766; } }
+.arcade-scores { margin-top: 3rem; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.4rem; max-width: 760px; }
+.arcade-scores div { display: grid; gap: 0.7rem; }
+.arcade-scores span { font-family: var(--a-pixel); font-size: 0.55rem; text-transform: uppercase; color: var(--a-pink); line-height: 1.6; }
+.arcade-scores b { font-family: var(--a-pixel); font-weight: 400; font-size: clamp(1.8rem, 4vw, 2.8rem); color: var(--a-yellow); text-shadow: 0 0 14px rgba(255, 225, 77, 0.7), 4px 4px 0 #6b4a00; }
+
+/* Continue band */
+.arcade-continue { padding: clamp(3rem, 7vw, 4.5rem) 0; background: repeating-linear-gradient(45deg, #2a0b3f 0 18px, #220833 18px 36px); border-top: 4px solid var(--a-pink); }
+.arcade-continue-inner { display: flex; align-items: center; justify-content: space-between; gap: 1.8rem; flex-wrap: wrap; }
+.arcade-continue h2 { font-size: clamp(1.3rem, 3vw, 2rem); text-transform: uppercase; color: var(--a-yellow); text-shadow: 0 0 14px rgba(255, 225, 77, 0.7); animation: blink 1.2s steps(1) infinite; }
+.arcade-continue p { margin-top: 0.9rem; color: var(--a-dim); max-width: 54ch; }
+
+/* Footer */
+.arcade-footer { background: #05030b; color: var(--a-dim); padding: 2rem 0; border-top: 3px solid #2a1a4a; }
+.arcade-footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 1rem 2rem; flex-wrap: wrap; }
+.arcade-footer p { font-family: var(--a-pixel); font-size: 0.55rem; text-transform: uppercase; }
+.arcade-footer-links { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+
+@media (max-width: 960px) {
+  .arcade-menu { display: none; }
+  .arcade-levels { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .arcade-players { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 860px) {
+  .arcade-hero { min-height: 0; }
+  .arcade-hero-inner { grid-template-columns: minmax(0, 1fr); padding-top: 1.5rem; }
+  .arcade-cabinet { order: -1; width: 100%; max-width: 440px; margin: 0 auto; }
+  .arcade-nav-actions .arcade-btn-ghost { display: none; }
+  .arcade-sun { top: 4%; right: 5%; }
+}
+@media (max-width: 560px) {
+  .arcade-levels { grid-template-columns: minmax(0, 1fr); }
+  .arcade-scores { gap: 0.8rem; }
+  .arcade-brand { font-size: 0.7rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .arcade *, .arcade *::before, .arcade *::after, .arcade-crt { animation: none !important; }
+  .arcade [data-reveal] { opacity: 1; transform: none; }
+}
+
+/* After sign-in: a flash, then the ambulance is parked at the hospital door. */
+.arcade-arrive {
+  position: fixed; inset: 0; z-index: 60; display: grid; place-content: center; justify-items: center; gap: 1.4rem; padding: 1rem; overflow: hidden;
+  background: linear-gradient(to bottom, #3f97e8 0%, #a6daff 100%);
+}
+.arcade-arrive::after { content: ''; position: absolute; inset: 0; background: #fff; pointer-events: none; animation: warp-flash 420ms steps(4) forwards; }
+@keyframes warp-flash { from { opacity: 1; } to { opacity: 0; } }
+.arcade-arrive-title { position: relative; font-family: var(--a-pixel); font-size: clamp(1.3rem, 4vw, 2.4rem); text-transform: uppercase; color: var(--a-yellow); text-shadow: 4px 4px 0 #12051e, -2px -2px 0 #12051e, 2px -2px 0 #12051e, -2px 2px 0 #12051e; animation: blink 0.6s steps(1) 400ms infinite; }
+.arcade-arrive-sub { position: relative; background: rgba(12, 8, 28, 0.8); padding: 0.7rem 1rem; font-family: var(--a-pixel); font-size: 0.65rem; text-transform: uppercase; color: var(--a-cyan); text-shadow: 0 0 10px rgba(41, 240, 255, 0.7); }
+.arcade-hospital { position: relative; width: min(760px, 94vw); }
+.arcade-hospital svg { position: relative; display: block; width: 100%; height: auto; image-rendering: pixelated; }
+/* Grass that carries the hospital's lawn out to the screen edges. */
+.arcade-hospital::before { content: ''; position: absolute; left: -100vw; right: -100vw; top: calc(76 / 92 * 100%); height: 100vh; background: linear-gradient(to bottom, #62b85a 0 6px, #55a94e 6px); }
+.arcade-hospital-sign { font-family: var(--a-pixel); font-size: 4px; fill: #fff; }
+.arcade-window { fill: #ffe14d; animation: window-light 2.4s steps(1) infinite; }
+@keyframes window-light { 70% { fill: #ffe14d; } 71%, 85% { fill: #8a6f1a; } }
+.arcade-parked { position: absolute; left: 50%; bottom: 1%; width: 26%; transform: translateX(-50%); }
+.arcade-parked .arcade-ambulance { animation: park-settle 500ms steps(4) 300ms backwards; }
+.arcade-parked .arcade-puff { display: none; }
+@keyframes park-settle { 0% { transform: translateY(-14px) scaleY(1.06); } 50% { transform: translateY(4px) scaleY(0.94); } 100% { transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .arcade-arrive *, .arcade-arrive::after { animation: none !important; }
+  .arcade-arrive::after { opacity: 0; }
+  .arcade-car, .arcade-dash { display: none; }
+}
+
+/* Hyperspeed: plays for a moment after a successful sign-in, before the hospital. */
+.arcade-warp { position: absolute; left: 50%; bottom: calc(var(--amb-w) * 1.3); width: 0; height: 0; pointer-events: none; }
+.arcade-warp span {
+  position: absolute; left: 0; top: 0; width: 260vmax; height: 260vmax; translate: -50% -50%; opacity: 0;
+  background:
+    repeating-conic-gradient(from 3deg, rgba(190, 235, 255, 0.85) 0 0.35deg, transparent 0.35deg 7deg),
+    repeating-conic-gradient(from 0deg, rgba(255, 255, 255, 0.7) 0 0.5deg, transparent 0.5deg 11deg),
+    repeating-conic-gradient(from 5deg, rgba(255, 255, 255, 0.9) 0 0.25deg, transparent 0.25deg 13deg);
+  -webkit-mask: radial-gradient(circle, transparent 2%, #000 22%); mask: radial-gradient(circle, transparent 2%, #000 22%);
+}
+.arcade-boost .arcade-warp span { animation: warp-in 1.2s ease-in forwards, warp-streak 180ms linear infinite; }
+@keyframes warp-in { 0% { opacity: 0; } 25% { opacity: 0.9; } 100% { opacity: 1; } }
+@keyframes warp-streak { from { transform: scale(0.85) rotate(0deg); } to { transform: scale(1.1) rotate(0.6deg); } }
+.arcade-boost .arcade-grid { animation-duration: 0.12s; }
+.arcade-boost .arcade-stars { animation-duration: 2s, 0.2s; }
+.arcade-boost .arcade-dash { animation-duration: 0.22s; height: 40cqh; margin-top: -40cqh; }
+.arcade-boost .arcade-car { animation-duration: 0.9s !important; animation-delay: 0s !important; }
+.arcade-boost .arcade-sun { animation: sun-flare 1.2s ease-in forwards; }
+@keyframes sun-flare { to { filter: drop-shadow(0 0 120px rgba(255, 245, 190, 1)) brightness(1.3); } }
+.arcade-boost .arcade-road { animation: boost-away 1.2s cubic-bezier(0.7, 0, 0.9, 0.3) forwards; }
+@keyframes boost-away {
+  0% { transform: translateX(-50%); }
+  22% { transform: translateX(-50%) translateY(10px) scale(1.06); }
+  100% { transform: translateX(-50%) translateY(calc(var(--amb-w) * -1.15)) scale(0.02); }
+}
+.arcade-boost .arcade-ambulance { animation-duration: 70ms; }
+.arcade-boost .arcade-ambulance svg { filter: drop-shadow(0 0 18px rgba(41, 240, 255, 0.9)) drop-shadow(0 24px 0 rgba(255, 61, 242, 0.35)) drop-shadow(0 48px 0 rgba(41, 240, 255, 0.2)); }
+.arcade-boost .arcade-siren-glow { animation-duration: 160ms; }
+.arcade-boost .arcade-hero { animation: boost-shake 120ms steps(2) infinite; }
+@keyframes boost-shake { 50% { transform: translate(2px, -1px); } }
+.arcade-boost .arcade-hero-inner { opacity: 0; visibility: hidden; transition: opacity 240ms steps(3), visibility 0s 240ms; }
+@media (prefers-reduced-motion: reduce) { .arcade-warp { display: none; } }
+
+/* ---- Arcade racing skin (colours from the scenery; animations unchanged) ------- */
+.arcade-crt { background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0) 0 2px, rgba(0, 0, 0, 0.1) 2px 3px), radial-gradient(ellipse at center, transparent 65%, rgba(0, 0, 0, 0.35) 100%); }
+
+/* Nav: asphalt with a yellow centre line. */
+.arcade-nav { background: rgba(46, 46, 54, 0.95); border-bottom: 0; box-shadow: 0 4px 0 #12051e; }
+.arcade-nav::after { content: ''; position: absolute; left: 0; right: 0; bottom: -4px; height: 4px; background: repeating-linear-gradient(90deg, var(--a-yellow) 0 34px, transparent 34px 60px); }
+.arcade-brand em { color: var(--a-yellow); text-shadow: 2px 2px 0 #12051e; }
+.arcade-brand img { box-shadow: 0 0 0 3px #fff, 0 0 0 6px #12051e; }
+.arcade-menu button { color: #fff; }
+.arcade-btn-ghost { color: #fff; box-shadow: 0 0 0 3px #fff, 0 4px 0 3px #12051e; }
+.arcade-btn-ghost:hover:not(:disabled) { background: rgba(255, 255, 255, 0.14); }
+.arcade-btn-ghost:active:not(:disabled) { box-shadow: 0 0 0 3px #fff; }
+.arcade-btn:focus-visible { outline-color: #fff; }
+
+/* Hero text sits on a green highway sign. */
+.arcade-hero-copy {
+  background: rgba(31, 122, 61, 0.95); border-radius: 10px;
+  box-shadow: inset 0 0 0 4px #fff, 0 0 0 4px var(--a-sign-edge), 0 10px 0 4px rgba(0, 0, 0, 0.22);
+}
+.arcade-hud { color: #e6f5ea; }
+.arcade-hud b { color: var(--a-yellow); text-shadow: 2px 2px 0 var(--a-sign-edge); }
+.arcade-eyebrow { color: var(--a-yellow); text-shadow: 2px 2px 0 var(--a-sign-edge); }
+.arcade-title { text-shadow: 4px 4px 0 var(--a-sign-edge), -2px 0 0 var(--a-sign-edge), 0 -2px 0 var(--a-sign-edge); }
+.arcade-lede { color: #e6f5ea; }
+
+/* Sign-in: a dashboard panel. */
+.arcade-cabinet { background: linear-gradient(to bottom, #3b3b44, #2a2a31); }
+.arcade-cabinet-head { border-bottom-color: #55555f; }
+.arcade-cabinet-head img { box-shadow: 0 0 0 3px #fff, 0 0 0 6px #12051e; }
+.arcade-cabinet-head h2 { text-shadow: 3px 3px 0 #12051e; }
+.arcade-field input { background: #12140f; color: #9dff8a; caret-color: #9dff8a; box-shadow: 0 0 0 3px #55555f; text-shadow: none; }
+.arcade-field input:focus { box-shadow: 0 0 0 3px var(--a-yellow); }
+
+/* Ticker: yellow banner between checkered flags. */
+.arcade-ticker { border: 0; padding-block: 12px; background: var(--a-checker) top left / 12px 12px repeat-x, var(--a-checker) bottom left / 12px 12px repeat-x, var(--a-yellow); }
+
+/* How to play: open sky with highway signs. */
+.arcade-section { background: linear-gradient(to bottom, #6db8f6, #cfeaff); }
+.arcade-section .arcade-kicker { color: var(--a-red); text-shadow: 2px 2px 0 #fff; }
+.arcade-heading { color: #fff; text-shadow: 3px 3px 0 var(--a-night), -2px 0 0 var(--a-night), 0 -2px 0 var(--a-night), 2px 0 0 var(--a-night); }
+.arcade-sub { color: var(--a-night); }
+.arcade-levels li { background: var(--a-sign); border-radius: 8px; box-shadow: inset 0 0 0 3px #fff, 0 0 0 3px var(--a-sign-edge), 0 8px 0 3px rgba(0, 0, 0, 0.2); transition: transform 160ms steps(2); }
+.arcade-levels li:hover { transform: translateY(-4px); box-shadow: inset 0 0 0 3px #fff, 0 0 0 3px var(--a-sign-edge), 0 12px 0 3px rgba(0, 0, 0, 0.2); }
+.arcade-levels p { color: #e6f5ea; }
+.arcade-level-tag { background: var(--a-yellow); color: #12051e; box-shadow: 0 0 0 2px #12051e; }
+
+/* Tickets: mowed grass with white cards. */
+.arcade-section-alt { background: repeating-linear-gradient(90deg, #5cb85c 0 90px, #52a84c 90px 180px); border-block: 0; }
+.arcade-section-alt .arcade-kicker { color: var(--a-yellow); text-shadow: 2px 2px 0 #12051e; }
+.arcade-section-alt .arcade-heading { text-shadow: 3px 3px 0 #12051e, -2px 0 0 #12051e, 0 -2px 0 #12051e, 2px 0 0 #12051e; }
+.arcade-player { --c: var(--a-sky); background: #fff; border-radius: 6px; box-shadow: inset 0 8px 0 var(--c), 0 0 0 4px #12051e, 0 8px 0 4px rgba(0, 0, 0, 0.25); }
+.arcade-player.priority { --c: #f2b705; }
+.arcade-player.emergency { --c: var(--a-red); }
+.arcade-player:hover { box-shadow: inset 0 8px 0 var(--c), 0 0 0 4px #12051e, 0 14px 0 4px rgba(0, 0, 0, 0.25); }
+.arcade-player h3 { color: var(--a-night); }
+.arcade-player p { color: #44506a; }
+.arcade-player-name { text-shadow: 2px 2px 0 #12051e; }
+.arcade-player-badge { box-shadow: 0 -5px 0 0 rgba(0, 0, 0, 0.25) inset, 0 0 0 3px #12051e; }
+.arcade-tip { background: var(--a-bg); color: #fff; box-shadow: none; border: 3px dashed var(--a-yellow); }
+.arcade-tip b { color: var(--a-yellow); }
+
+/* Services: the open road, edged with red-and-white kerbs. */
+#services { background: var(--a-bg-2); position: relative; }
+#services::before, #services::after { content: ''; position: absolute; left: 0; right: 0; height: 10px; background: var(--a-curb); }
+#services::before { top: 0; }
+#services::after { bottom: 0; }
+#services .arcade-kicker { color: var(--a-yellow); text-shadow: 2px 2px 0 #12051e; }
+#services .arcade-heading { text-shadow: 3px 3px 0 #12051e; }
+#services .arcade-sub { color: var(--a-dim); }
+.arcade-stages li { color: #fff; background: var(--a-sign); border-radius: 6px; box-shadow: inset 0 0 0 2px #fff, 0 0 0 3px var(--a-sign-edge); }
+@keyframes stage-light { 0%, 7% { color: #12051e; background: var(--a-yellow); box-shadow: inset 0 0 0 2px #fff, 0 0 0 3px #12051e, 0 0 18px rgba(255, 216, 74, 0.7); } 8%, 100% { color: #fff; background: var(--a-sign); box-shadow: inset 0 0 0 2px #fff, 0 0 0 3px var(--a-sign-edge); } }
+.arcade-scores span { color: var(--a-cyan); }
+.arcade-scores b { text-shadow: 4px 4px 0 #12051e; }
+
+/* Continue: the finish line. */
+.arcade-continue { border-top: 0; background: var(--a-checker) top left / 24px 24px repeat-x, var(--a-checker) bottom left / 24px 24px repeat-x, linear-gradient(to bottom, #6db8f6, #cfeaff); padding-block: calc(clamp(3rem, 7vw, 4.5rem) + 24px); }
+.arcade-continue h2 { color: var(--a-red); text-shadow: 3px 3px 0 #12051e, -2px 0 0 #fff, 0 -2px 0 #fff; }
+.arcade-continue p { color: var(--a-night); }
+
+/* Footer: asphalt with a centre line. */
+.arcade-footer { background: #24242b; border-top: 0; position: relative; }
+.arcade-footer::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 4px; background: repeating-linear-gradient(90deg, var(--a-yellow) 0 34px, transparent 34px 60px); }
+.arcade-footer-links a, .arcade-footer-links button { color: var(--a-dim); }
