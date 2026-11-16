@@ -1,5 +1,6 @@
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
+import { cache } from '../src/cache';
 import { dailyCounters, queue, users } from '../src/db';
 import { heldByActiveRow, nextDailySequence, tierForNumber } from '../src/services/numbers';
 import { manilaDayStart, manilaDayString } from '../src/time';
@@ -168,15 +169,39 @@ describe('login and single-device sessions', () => {
     }
   });
 
-  it('locks the account for the caller after five failures', async () => {
+  it('locks the device on the fifth failure, even for the right password', async () => {
+    await makeUser('doc1', 1);
+    const c = await client();
+    for (let i = 0; i < 4; i++) {
+      expect((await c.login('doc1', 'wrong')).status).toBe(401);
+    }
+    const fifth = await c.login('doc1', 'wrong');
+    expect(fifth.status).toBe(429);
+    expect(fifth.body.message).toBe('Too many failed sign-in attempts from this device. Please try again in 15 minutes.');
+    const res = await c.login('doc1');
+    expect(res.status).toBe(429);
+    expect(res.body.success).toBe(false);
+  });
+
+  it('counts failures across usernames, so switching usernames cannot dodge the lock', async () => {
+    await makeUser('doc1', 1);
+    const c = await client();
+    for (const name of ['ds', 'ds', 'dss', 'admin', 'ds']) {
+      await c.login(name, 'wrong');
+    }
+    expect((await c.login('doc1')).status).toBe(429);
+    expect((await (await client()).login('doc1')).status).toBe(429);
+  });
+
+  it('lets the device sign in again once the lock ends, with a fresh count', async () => {
     await makeUser('doc1', 1);
     const c = await client();
     for (let i = 0; i < 5; i++) {
-      await c.login('doc1', 'wrong');
+      await c.login('ds', 'wrong');
     }
-    const res = await c.login('doc1');
-    expect(res.status).toBe(429);
-    expect(res.body.message).toContain('Too many login attempts');
+    cache.forget('login:lock:127.0.0.1');
+    expect((await c.login('doc1')).body.success).toBe(true);
+    expect((await (await client()).login('doc1', 'wrong')).status).toBe(401);
   });
 
   it('requires a session for protected endpoints', async () => {

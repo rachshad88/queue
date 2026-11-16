@@ -979,6 +979,8 @@ tr.is-unattended td { background: var(--amber-soft); }
 .walker { position: relative; display: inline-block; aspect-ratio: 12 / 16; }
 .walker > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .walker-b { visibility: hidden; }
+/* Holding a ticket: the art is 17 columns wide, the box stays on the 12-column body so he does not shift. */
+.walker.holding > svg { width: calc(100% * 17 / 12); }
 .arcade[data-walking] .walker-a { animation: walk-a 260ms steps(1) infinite; }
 .arcade[data-walking] .walker-b { animation: walk-b 260ms steps(1) infinite; }
 @keyframes walk-a { 50%, 100% { visibility: hidden; } }
@@ -1142,8 +1144,6 @@ tr.is-unattended td { background: var(--amber-soft); }
 .run-hero .walker { height: 100%; }
 .arcade[data-walking] .run-hero .walker { animation: hero-bob 260ms steps(2) infinite; }
 @keyframes hero-bob { 50% { translate: 0 -0.8cqh; } }
-.run-ticket { position: absolute; left: 66%; top: 46%; width: 34%; height: 17%; background: #ffd84a; box-shadow: 0 0 0 0.4cqh #12051e; transform: scale(0); transition: transform 300ms steps(3); }
-.run-hero.has-ticket .run-ticket { transform: none; }
 
 .run-hud {
   position: absolute; top: 2.6cqh; left: 4cqw; right: 4cqw; display: flex; align-items: center; gap: 3cqw;

@@ -52,23 +52,31 @@ authRouter.get('/session', async (req, res) => {
 authRouter.post('/login', throttle('login', config.throttle.login, (req) => `${clientIp(req)}|${trimmed(req.body?.username).toLowerCase()}`), async (req, res) => {
   const username = trimmed(req.body?.username);
   const password = str(req.body?.password);
-  const attemptKey = `${clientIp(req)}|${username.toLowerCase()}`;
-  const lockKey = `login:lock:${attemptKey}`;
-  const attemptsKey = `login:attempts:${attemptKey}`;
+  // Failures are counted per device (IP), whatever usernames are tried, so switching
+  // usernames cannot dodge the lock, and a locked device cannot sign in at all until it ends.
+  const ip = clientIp(req);
+  const lockKey = `login:lock:${ip}`;
+  const attemptsKey = `login:attempts:${ip}`;
+  const locked = (): void => {
+    const minutes = Math.max(1, Math.ceil(cache.ttl(lockKey) / 60));
+    res.status(429).json({ success: false, message: `Too many failed sign-in attempts from this device. Please try again in ${minutes} minute${minutes === 1 ? '' : 's'}.` });
+  };
 
   if (cache.has(lockKey)) {
-    res.status(429).json({ success: false, message: `Too many login attempts. Please try again in ${config.login.lockMinutes} minutes.` });
-    return;
+    return locked();
   }
 
   // Deliberately generic: a distinct "deactivated" message would let an
   // attacker enumerate valid usernames and department states.
   const fail = (userExists: boolean) => {
     const attempts = cache.increment(attemptsKey, config.login.lockMinutes * 60);
+    console.warn('auth.failed', JSON.stringify({ ip, username, user_exists: userExists }));
     if (attempts >= config.login.maxAttempts) {
       cache.put(lockKey, Date.now(), config.login.lockMinutes * 60);
+      cache.forget(attemptsKey);
+      console.warn('auth.locked', JSON.stringify({ ip, minutes: config.login.lockMinutes }));
+      return locked();
     }
-    console.warn('auth.failed', JSON.stringify({ ip: clientIp(req), username, user_exists: userExists }));
     res.status(401).json({ success: false, message: 'Invalid username or password.' });
   };
 

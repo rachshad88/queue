@@ -62,13 +62,42 @@ const WALK_TOP = ['....HHHHH...', '...HHHHHHH..', '...HHSSSSS..', '...HSSSSKS..'
 const WALK_A = [...WALK_TOP, '...CCCCCCS..', '...SCCCCC...', '...CCCCCC...', '...PPPPPP...', '...PP..PP...', '...PP..PP...', '...PP..PP...', '..KKK.KKK...'];
 const WALK_B = [...WALK_TOP, '...CCCCCC...', '..SCCCCCC...', '...CCCCCCS..', '...PPPPPP...', '..PPP..PPP..', '.PPP....PPP.', '.PP......PP.', 'KKK......KKK'];
 
-/** The patient, seen from the side. Steps whenever the page is scrolling, turns round when scrolling back up. */
-export function Walker({ className = '', children }: { className?: string; children?: ReactNode }) {
+/** A white paper ticket (outline, bold number, text lines), drawn at rows 2–10, columns 11–16. */
+const HELD_TICKET = ['KKKKKK', 'KWWWWK', 'KDDDDK', 'KWWWWK', 'KWDDWK', 'KWWWWK', 'KDDDWK', 'KWWWWK', 'KKKKKK'];
+
+/**
+ * The same frame with the near arm held out at chest height, gripping the ticket in front of him.
+ * The grid widens from 12 to 17 columns so the ticket sits clear of the body.
+ */
+function holdingTicket(frame: string[]): string[] {
+  const grid = frame.map((row) => (row + '.....').split(''));
+  grid.forEach((row, y) => {
+    if (y >= 6 && row[9] === 'S') {
+      row[9] = '.'; // the swinging hand now holds the ticket instead
+    }
+  });
+  grid[8].splice(3, 9, ...'CCCCCCCSS');
+  HELD_TICKET.forEach((line, i) => [...line].forEach((c, x) => (grid[2 + i][11 + x] = c)));
+  // Fingers over the ticket's edge, so it reads as gripped rather than stuck on.
+  grid[7][11] = 'S';
+  grid[8][11] = 'S';
+  grid[8][12] = 'S';
+  return grid.map((row) => row.join(''));
+}
+
+const HOLD_PALETTE = { ...WALKER_PALETTE, W: '#ffffff', D: '#8a90a0' };
+const HOLD_A = holdingTicket(WALK_A);
+const HOLD_B = holdingTicket(WALK_B);
+
+/**
+ * The patient, seen from the side. Steps whenever the page is scrolling, turns round when scrolling back up.
+ * With `holding`, he carries his ticket out in front of him.
+ */
+export function Walker({ className = '', holding = false }: { className?: string; holding?: boolean }) {
   return (
-    <span className={`walker ${className}`} aria-hidden="true">
-      <PixelArt art={WALK_A} palette={WALKER_PALETTE} className="walker-a" />
-      <PixelArt art={WALK_B} palette={WALKER_PALETTE} className="walker-b" />
-      {children}
+    <span className={`walker ${className}${holding ? ' holding' : ''}`} aria-hidden="true">
+      <PixelArt art={holding ? HOLD_A : WALK_A} palette={holding ? HOLD_PALETTE : WALKER_PALETTE} className="walker-a" />
+      <PixelArt art={holding ? HOLD_B : WALK_B} palette={holding ? HOLD_PALETTE : WALKER_PALETTE} className="walker-b" />
     </span>
   );
 }
@@ -360,10 +389,8 @@ function VisitRun() {
           <span className="run-finish" style={{ left: trackLeft(0.985) }} />
         </div>
 
-        <div className={`run-hero${level >= 0 ? ' has-ticket' : ''}`}>
-          <Walker>
-            <span className="run-ticket" />
-          </Walker>
+        <div className="run-hero">
+          <Walker holding={level >= 0} />
         </div>
 
         <div className="run-hud">
@@ -588,7 +615,7 @@ function WorldMap({ names, services }: { names: string[]; services: LiveConfig |
                   >
                     <span className="map-house">
                       <PixelArt art={HOUSE} palette={{ K: INK, R: ROOFS[index % ROOFS.length], W: '#f4f1fb', Y: '#ffd84a', D: '#7a4a1f' }} />
-                      {index === here && <Walker className="map-walker" />}
+                      {index === here && <Walker className="map-walker" holding />}
                       {index < here && <span className="map-flag" aria-hidden="true" />}
                     </span>
                     <span className="map-name">{name}</span>
