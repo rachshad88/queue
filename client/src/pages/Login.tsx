@@ -305,7 +305,7 @@ export function Login() {
         <nav className="arcade-menu">
           <button type="button" onClick={() => scrollToId('how')}>How to play</button>
           <button type="button" onClick={() => scrollToId('tickets')}>Tickets</button>
-          <button type="button" onClick={() => scrollToId('services')}>Stages</button>
+          <button type="button" onClick={() => scrollToId('services')}>Services</button>
           <button type="button" onClick={() => navigate('/manual')}>Manual</button>
         </nav>
         <div className="arcade-nav-actions">
@@ -414,7 +414,7 @@ export function Login() {
         </div>
       </div>
 
-      <LandingJourney departmentNames={departmentNames} services={services} onSignIn={goToSignIn} />
+      <LandingJourney services={services} onSignIn={goToSignIn} />
 
       <footer className="arcade-footer">
         <div className="arcade-wrap arcade-footer-inner">

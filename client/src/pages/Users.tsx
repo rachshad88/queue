@@ -122,15 +122,17 @@ export function Users() {
                   <td><span className={`badge ${u.status === 'active' ? 'state-ok' : 'status-inactive'}`}>{u.status}</span></td>
                   <td className="nowrap">{formatDateTime(u.last_login_at) || <span className="muted">Never</span>}</td>
                   <td className="right nowrap">
-                    <button className="btn btn-sm" onClick={() => setEditing({ id: u.user_id, form: { ...BLANK, ...u, department: String(u.department_id ?? ''), password: '' } })}>Edit</button>{' '}
-                    {(data?.activity_by_user?.[u.user_id]?.length ?? 0) > 0 && <><button className="btn btn-sm" onClick={() => setActivityFor(u)}>Activity</button>{' '}</>}
+                    <div className="row-actions">
+                    <button className="btn btn-sm" onClick={() => setEditing({ id: u.user_id, form: { ...BLANK, ...u, department: String(u.department_id ?? ''), password: '' } })}>Edit</button>
+                    {(data?.activity_by_user?.[u.user_id]?.length ?? 0) > 0 && <><button className="btn btn-sm" onClick={() => setActivityFor(u)}>Activity</button></>}
                     {isAdmin && u.user_id !== data?.user_id && (
                       <>
-                        <button className="btn btn-sm" onClick={() => void op(u, 'force-logout', `Sign ${u.username} out of their device?`)}>Sign out</button>{' '}
-                        <button className="btn btn-sm" onClick={() => void op(u, u.status === 'active' ? 'deactivate' : 'activate')}>{u.status === 'active' ? 'Deactivate' : 'Activate'}</button>{' '}
+                        <button className="btn btn-sm" onClick={() => void op(u, 'force-logout', `Sign ${u.username} out of their device?`)}>Sign out</button>
+                        <button className="btn btn-sm" onClick={() => void op(u, u.status === 'active' ? 'deactivate' : 'activate')}>{u.status === 'active' ? 'Deactivate' : 'Activate'}</button>
                         <button className="btn btn-sm btn-danger" onClick={() => void op(u, 'delete', `Delete ${u.username}? This cannot be undone.`)}>Delete</button>
                       </>
                     )}
+                    </div>
                   </td>
                 </tr>
               ))}

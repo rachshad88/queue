@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
+import { api } from '../api';
 import { BASE } from '../base';
+import { useDepartmentEvents } from '../socket';
 import { play, setSoundEnabled, useSoundEnabled, type SoundName } from '../sfx';
 
 /*
  * The landing page below the hero: a playable-feeling scroll.
  *  1. World 1: the patient walks the visit as you scroll (sticky side-scroller).
  *  2. Player select: the three ticket types as fighters.
- *  3. Stage select: every service on a world map; the patient hops stage to stage as you scroll.
+ *  3. Service board: every service, what it does, and its live queue.
  *  4. Continue? countdown into the live monitor.
  */
 
@@ -59,8 +61,8 @@ function PixelArt({ art, palette, className }: { art: string[]; palette: Record<
 const INK = '#12051e';
 const WALKER_PALETTE = { H: '#3b2314', S: '#f1c27d', K: INK, C: '#3f97e8', P: '#2e2e36' };
 const WALK_TOP = ['....HHHHH...', '...HHHHHHH..', '...HHSSSSS..', '...HSSSSKS..', '...HSSSSSSS.', '....SSSSS...', '....CCCC....', '...CCCCCC...'];
-const WALK_A = [...WALK_TOP, '...CCCCCCS..', '...SCCCCC...', '...CCCCCC...', '...PPPPPP...', '...PP..PP...', '...PP..PP...', '...PP..PP...', '..KKK.KKK...'];
-const WALK_B = [...WALK_TOP, '...CCCCCC...', '..SCCCCCC...', '...CCCCCCS..', '...PPPPPP...', '..PPP..PPP..', '.PPP....PPP.', '.PP......PP.', 'KKK......KKK'];
+const WALK_A = [...WALK_TOP, '...CCCCCCS..', '...SCCCCC...', '...CCCCCC...', '...PPPPPP...', '...PP..PP...', '...PP..PP...', '...PP..PP...', '...KKK.KKK..'];
+const WALK_B = [...WALK_TOP, '...CCCCCC...', '..SCCCCCC...', '...CCCCCCS..', '...PPPPPP...', '..PPP..PPP..', '.PPP....PPP.', '.PP......PP.', '.KKK.....KKK'];
 
 /** A white paper ticket (outline, bold number, text lines), drawn at rows 2–10, columns 11–16. */
 const HELD_TICKET = ['KKKKKK', 'KWWWWK', 'KDDDDK', 'KWWWWK', 'KWDDWK', 'KWWWWK', 'KDDDWK', 'KWWWWK', 'KKKKKK'];
@@ -141,12 +143,6 @@ const SPEAKER = [
 ];
 const SPEAKER_PALETTE = { K: INK, G: '#ffd84a' };
 const TOGGLE_PALETTE = { K: INK, G: '#ffffff' };
-const HOUSE = [
-  '.......KK.......', '.....KKRRKK.....', '...KKRRRRRRKK...', '.KKRRRRRRRRRRKK.', 'KRRRRRRRRRRRRRRK', 'KKKKKKKKKKKKKKKK',
-  '.KWWWWWWWWWWWWK.', '.KWYYWWWWWWYYWK.', '.KWYYWWDDWWYYWK.', '.KWWWWWDDWWWWWK.', '.KWWWWWDDWWWWWK.', '.KWWWWWDDWWWWWK.',
-  '.KKKKKKKKKKKKKK.',
-];
-const ROOFS = ['#e63946', '#3f97e8', '#f2b705', '#1f7a3d', '#9b5de5'];
 
 // ---- Shared hooks ---------------------------------------------------------------
 
@@ -513,129 +509,159 @@ function PlayerSelect() {
   );
 }
 
-// ---- 3. Stage select: the services as a world map --------------------------------
+// ---- 3. Service board: every service with what it does and its live queue ----------
 
-/** Map columns for the grid's width; `ready` re-measures once the grid is on the page. */
-function useColumns(ref: RefObject<HTMLElement | null>, ready: boolean): number {
-  const [columns, setColumns] = useState(4);
-  useEffect(() => {
-    const element = ref.current;
-    if (!element || !('ResizeObserver' in window)) {
+const ICONS: Record<string, { art: string[]; palette: Record<string, string> }> = {
+  clinic: {
+    art: ['...KKKK...', '...KRRK...', '...KRRK...', 'KKKKRRKKKK', 'KRRRRRRRRK', 'KRRRRRRRRK', 'KKKKRRKKKK', '...KRRK...', '...KRRK...', '...KKKK...'],
+    palette: { K: INK, R: '#e63946' },
+  },
+  admission: {
+    art: ['...KKKK...', '.KKKYYKKK.', '.KWKKKKWK.', '.KWWWWWWK.', '.KWKKKKWK.', '.KWWWWWWK.', '.KWKKKKWK.', '.KWWWWWWK.', '.KWKKKWWK.', '.KKKKKKKK.'],
+    palette: { K: INK, Y: '#ffd84a', W: '#f4f1fb' },
+  },
+  lab: {
+    art: ['..KKKKKK..', '...KGGK...', '...KGGK...', '...KGGK...', '..KGGGGK..', '.KGGGGGGK.', '.KCCCCCCK.', 'KCCWCCCCCK', 'KCCCCCCCCK', '.KKKKKKKK.'],
+    palette: { K: INK, G: '#d9f3ff', C: '#3fd0c9', W: '#ffffff' },
+  },
+  pharmacy: {
+    art: ['..........', '..........', '.KKKKKKKK.', 'KRRRRWWWWK', 'KRWRRWWWWK', 'KRRRRWWWWK', 'KRRRRWWWWK', '.KKKKKKKK.', '..........', '..........'],
+    palette: { K: INK, R: '#e63946', W: '#f4f1fb' },
+  },
+  dental: {
+    art: ['.KKK..KKK.', 'KWWWKKWWWK', 'KWWWWWWWWK', 'KWWWWWWWWK', 'KWWWWWWWWK', '.KWWWWWWK.', '.KWWKKWWK.', '.KWK..KWK.', '.KWK..KWK.', '..K....K..'],
+    palette: { K: INK, W: '#f4f1fb' },
+  },
+  abtc: {
+    art: ['..........', '..........', 'K..KKKKK..', 'KKKKCCWK..', 'K..KCCWKKK', 'KKKKCCWK..', 'K..KKKKK..', '..........', '..........', '..........'],
+    palette: { K: INK, C: '#6cc0ff', W: '#f4f1fb' },
+  },
+  nutrition: {
+    art: ['....B.L...', '....BLL...', '.KKKBKKK..', 'KRRRRRRRK.', 'KRWRRRRRK.', 'KRRRRRRRK.', 'KRRRRRRRK.', '.KRRRRRK..', '..KKRKK...', '..........'],
+    palette: { K: INK, R: '#e63946', W: '#ffb3ba', B: '#7a4a1f', L: '#3fbf5f' },
+  },
+  tb: {
+    art: ['....KK....', '....KK....', '.KKKKKKKK.', 'KPPKKKKPPK', 'KPPPKKPPPK', 'KPWPKKPPPK', 'KPPPKKPPPK', 'KPPPKKPPPK', '.KPK..KPK.', '..K....K..'],
+    palette: { K: INK, P: '#ff8fa3', W: '#ffd6dd' },
+  },
+  vet: {
+    art: ['...KK..KK...', '..KBBKKBBK..', '..KBBKKBBK..', 'KK.KKKKKK.KK', 'KBK......KBK', 'KBK.KKKK.KBK', '.K.KBBBBK.K.', '..KBBBBBBK..', '..KBBBBBBK..', '...KKKKKK...'],
+    palette: { K: INK, B: '#c98a4b' },
+  },
+};
+
+const SERVICE_INFO: { match: RegExp; icon: keyof typeof ICONS; text: string }[] = [
+  { match: /clinic/i, icon: 'clinic', text: 'Check-up and consultation with a doctor.' },
+  { match: /admission/i, icon: 'admission', text: 'Patient records and admission.' },
+  { match: /lab/i, icon: 'lab', text: 'Blood, urine and other tests.' },
+  { match: /pharm/i, icon: 'pharmacy', text: 'Pick up the medicines you were prescribed.' },
+  { match: /dental/i, icon: 'dental', text: 'Tooth check-ups, cleaning and extraction.' },
+  { match: /abtc|bite/i, icon: 'abtc', text: 'Animal bite treatment and anti-rabies shots.' },
+  { match: /nutri/i, icon: 'nutrition', text: 'Nutrition advice and growth checks.' },
+  { match: /tb/i, icon: 'tb', text: 'TB screening and daily treatment.' },
+  { match: /vet/i, icon: 'vet', text: 'Care and vaccines for pets and animals.' },
+];
+const serviceInfo = (name: string): { icon: keyof typeof ICONS; text: string } =>
+  SERVICE_INFO.find((s) => s.match.test(name)) ?? { icon: 'clinic', text: 'Staff call your number here.' };
+
+type BoardDept = { id: number; serving?: { queue_number?: string }[]; waiting_total?: number };
+
+/** Today's numbers per service, fetched once in view and again whenever a queue changes (socket push, no polling). */
+function useServiceBoard(ids: number[], active: boolean): Record<number, { now: string | null; waiting: number }> | null {
+  const [board, setBoard] = useState<Record<number, { now: string | null; waiting: number }> | null>(null);
+  const key = ids.join(',');
+  const refresh = useRef<() => void>(() => {});
+  refresh.current = () => {
+    if (!key) {
       return;
     }
-    const observer = new ResizeObserver(([entry]) => {
-      const width = entry.contentRect.width;
-      setColumns(width >= 860 ? 4 : width >= 520 ? 3 : 2);
-    });
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [ref, ready]);
-  return columns;
-}
-
-/** Counts up to `target` in a few arcade-style steps once `start` is true. */
-function useCountUp(target: number, start: boolean): number {
-  const [value, setValue] = useState(0);
+    void api<BoardDept[]>(`/live-serving?ids=${key}`)
+      .then((rows) => {
+        if (!Array.isArray(rows)) {
+          return;
+        }
+        const next: Record<number, { now: string | null; waiting: number }> = {};
+        for (const row of rows) {
+          const now = (row.serving ?? []).map((s) => s.queue_number).find((n) => n && n !== '-') ?? null;
+          next[row.id] = { now, waiting: row.waiting_total ?? 0 };
+        }
+        setBoard(next);
+      })
+      .catch(() => undefined);
+  };
   useEffect(() => {
-    if (!start) {
-      return;
+    if (active) {
+      refresh.current();
     }
-    let shown = 0;
-    const timer = window.setInterval(() => {
-      shown = Math.min(target, shown + Math.max(1, Math.ceil(target / 8)));
-      setValue(shown);
-      if (shown >= target) {
-        window.clearInterval(timer);
-      }
-    }, 70);
-    return () => window.clearInterval(timer);
-  }, [target, start]);
-  return start ? value : 0;
-}
-
-function ScoreRow({ rank, label, value, start }: { rank: string; label: string; value: number; start: boolean }) {
-  return (
-    <li>
-      <span>{rank}</span>
-      <span>{label}</span>
-      <b>{pad(useCountUp(value, start))}</b>
-    </li>
-  );
-}
-
-function WorldMap({ names, services }: { names: string[]; services: LiveConfig | null }) {
-  const gridRef = useRef<HTMLOListElement>(null);
-  const scoresRef = useRef<HTMLDivElement>(null);
-  const columns = useColumns(gridRef, names.length > 0);
-  const scoresInView = useInView(scoresRef, 0.4);
-  const [here, setHere] = useState(0);
-  const lastHere = useRef(0);
-  useEffect(() => {
-    if (here > lastHere.current) {
-      play('hop', 90);
-    }
-    lastHere.current = here;
-  }, [here]);
-
-  // The patient hops one stage further for each slice of the map that scrolls past.
-  useScrollFrame(() => {
-    const grid = gridRef.current;
-    if (!grid || names.length === 0) {
-      return;
-    }
-    const rect = grid.getBoundingClientRect();
-    const progress = clamp01((window.innerHeight * 0.62 - rect.top) / rect.height);
-    setHere(Math.min(names.length - 1, Math.floor(progress * names.length)));
+  }, [active, key]);
+  useDepartmentEvents(active ? ids : [], 'live', {
+    connect: () => refresh.current(),
+    'queue-updated': () => refresh.current(),
   });
+  return board;
+}
+
+function ServiceBoard({ services }: { services: LiveConfig | null }) {
+  const sectionRef = useRef<HTMLElement>(null);
+  const inView = useInView(sectionRef, 0.05);
+  const [seen, setSeen] = useState(false);
+  useEffect(() => {
+    if (inView) {
+      setSeen(true);
+    }
+  }, [inView]);
+  const list = useMemo(() => (services?.departments ?? []).filter((d) => d.name !== 'WAITING AREA'), [services]);
+  const ids = useMemo(() => list.map((d) => d.id).slice(0, 12), [list]);
+  const board = useServiceBoard(ids, seen);
+  const totals = board ? Object.values(board).reduce((sum, d) => ({ waiting: sum.waiting + d.waiting, serving: sum.serving + (d.now ? 1 : 0) }), { waiting: 0, serving: 0 }) : null;
 
   return (
-    <section className="map" id="services">
+    <section className="svc" id="services" ref={sectionRef}>
       <div className="arcade-wrap">
-        <p className="arcade-kicker" data-reveal>Stage select</p>
-        <h2 className="arcade-heading" data-reveal>One ticket, every stage</h2>
-        <p className="arcade-sub" data-reveal>Staff transfer your ticket between these services, so you never need to line up again.</p>
-        {names.length > 0 ? (
-          <div className="map-board" data-reveal>
-            <p className="map-banner" aria-live="polite">
-              Stage {pad(here + 1)}/{pad(names.length)} <b>{names[here]}</b>
+        <p className="arcade-kicker" data-reveal>Service board</p>
+        <h2 className="arcade-heading" data-reveal>Where your ticket can take you</h2>
+        <p className="arcade-sub" data-reveal>Staff pass your ticket from one service to the next, so you never line up twice. The numbers below are live.</p>
+        {list.length > 0 ? (
+          <>
+            <p className="svc-status" aria-live="polite">
+              <span className="svc-dot" aria-hidden="true" /> Live today
+              {totals && (
+                <>
+                  <span><b>{totals.serving}</b> serving</span>
+                  <span><b>{totals.waiting}</b> waiting</span>
+                </>
+              )}
             </p>
-            <ol className="map-grid" ref={gridRef} style={{ '--cols': columns } as Vars}>
-              {names.map((name, index) => {
-                const row = Math.floor(index / columns);
-                const inRow = index % columns;
-                const reversed = row % 2 === 1;
-                const isLast = index === names.length - 1;
-                const link = isLast ? '' : inRow === columns - 1 ? 'down' : reversed ? 'left' : 'right';
-                const state = index < here ? ' cleared' : index === here ? ' here' : '';
+            <ul className={`svc-grid${seen ? ' play' : ''}`}>
+              {list.map((dept, index) => {
+                const info = serviceInfo(dept.name);
+                const icon = ICONS[info.icon];
+                const live = board?.[dept.id];
+                const busy = !!live && (!!live.now || live.waiting > 0);
                 return (
-                  <li
-                    key={name}
-                    className={`map-node${link ? ` link-${link}` : ''}${state}`}
-                    style={{ gridRow: row + 1, gridColumn: (reversed ? columns - inRow : inRow + 1) }}
-                  >
-                    <span className="map-house">
-                      <PixelArt art={HOUSE} palette={{ K: INK, R: ROOFS[index % ROOFS.length], W: '#f4f1fb', Y: '#ffd84a', D: '#7a4a1f' }} />
-                      {index === here && <Walker className="map-walker" holding />}
-                      {index < here && <span className="map-flag" aria-hidden="true" />}
+                  <li key={dept.id} className={`svc-card${busy ? ' busy' : ''}`} style={{ '--i': index } as Vars}>
+                    <span className="svc-icon">
+                      <PixelArt art={icon.art} palette={icon.palette} />
                     </span>
-                    <span className="map-name">{name}</span>
+                    <span className="svc-body">
+                      <b className="svc-name">{dept.name}</b>
+                      <span className="svc-text">{info.text}</span>
+                    </span>
+                    <span className="svc-live">
+                      <span>
+                        Now <b className={live?.now ? 'on' : undefined}>{live?.now ?? '---'}</b>
+                      </span>
+                      <span>
+                        Wait <b className={live?.waiting ? 'on' : undefined}>{live ? pad(live.waiting) : '--'}</b>
+                      </span>
+                    </span>
                   </li>
                 );
               })}
-            </ol>
-          </div>
+            </ul>
+          </>
         ) : (
           <p className="arcade-sub">The list of services could not be loaded right now.</p>
-        )}
-        {services && (
-          <div className="map-scores" ref={scoresRef} data-reveal>
-            <p className="map-scores-title">High scores</p>
-            <ol>
-              <ScoreRow rank="1st" label="Services" value={names.length} start={scoresInView} />
-              <ScoreRow rank="2nd" label="Waiting windows" value={services.waiting_sections?.length ?? 0} start={scoresInView} />
-              <ScoreRow rank="3rd" label="Admission windows" value={services.admission_sections?.length ?? 0} start={scoresInView} />
-            </ol>
-          </div>
         )}
       </div>
     </section>
@@ -706,12 +732,12 @@ export function SoundToggle() {
 }
 
 /** Everything below the hero and ticker. */
-export function LandingJourney({ departmentNames, services, onSignIn }: { departmentNames: string[]; services: LiveConfig | null; onSignIn: () => void }) {
+export function LandingJourney({ services, onSignIn }: { services: LiveConfig | null; onSignIn: () => void }) {
   return (
     <>
       <VisitRun />
       <PlayerSelect />
-      <WorldMap names={departmentNames} services={services} />
+      <ServiceBoard services={services} />
       <ContinueScreen onSignIn={onSignIn} />
     </>
   );
