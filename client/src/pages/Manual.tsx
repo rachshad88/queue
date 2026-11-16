@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useSession } from '../auth';
 import { BASE } from '../base';
@@ -44,6 +44,24 @@ function Card({ icon, title, children, tone = '' }: { icon: ReactNode; title: st
       <span className="man-card-icon">{icon}</span>
       <strong>{title}</strong>
       {children && <span>{children}</span>}
+    </div>
+  );
+}
+
+/** One troubleshooting question. The answer slides open slowly instead of appearing at once. */
+function FaqItem({ icon, question, answer }: { icon: string; question: string; answer: string }) {
+  const [open, setOpen] = useState(false);
+  const id = useId();
+  return (
+    <div className={`man-faq-item${open ? ' open' : ''}`}>
+      <button type="button" className="man-faq-q" aria-expanded={open} aria-controls={id} onClick={() => setOpen((v) => !v)}>
+        <span className="man-faq-icon">{icon}</span>
+        {question}
+        <span className="man-faq-sign" aria-hidden="true" />
+      </button>
+      <div className="man-faq-a" id={id} role="region" aria-hidden={!open}>
+        <div><p>{answer}</p></div>
+      </div>
     </div>
   );
 }
@@ -376,10 +394,7 @@ const SECTIONS: Section[] = [
           ['🔍', 'A number is missing from my list', 'Check the Hold filter, or search it in Queue list to see where it was transferred.'],
           ['📡', 'A banner says the server cannot be reached', 'Wait a moment. Buttons pause until it is back; nothing is lost.'],
         ].map(([emoji, q, a]) => (
-          <details key={q}>
-            <summary><span className="man-faq-icon">{emoji}</span>{q}</summary>
-            <p>{a}</p>
-          </details>
+          <FaqItem key={q} icon={emoji} question={q} answer={a} />
         ))}
       </div>
     ),
