@@ -401,6 +401,49 @@ const SECTIONS: Section[] = [
   },
 ];
 
+/** How far down the page the reader is, 0 to 100. Reaches 100 at the very bottom. */
+function useScrollPercent(): number {
+  const [percent, setPercent] = useState(0);
+  useEffect(() => {
+    let frame = 0;
+    const measure = (): void => {
+      frame = 0;
+      const room = document.documentElement.scrollHeight - window.innerHeight;
+      // Within a couple of pixels of the bottom counts as the bottom (zoom rounding).
+      setPercent(room <= 0 ? 100 : Math.min(100, Math.round((window.scrollY / (room - 2)) * 100)));
+    };
+    const schedule = (): void => {
+      if (!frame) {
+        frame = requestAnimationFrame(measure);
+      }
+    };
+    measure();
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+    };
+  }, []);
+  return percent;
+}
+
+/** The arcade-style meter in the navbar: knowledge fills up as the manual is read. */
+function KnowledgeBar() {
+  const percent = useScrollPercent();
+  const max = percent >= 100;
+  return (
+    <div className={`man-xp${max ? ' max' : ''}`} role="progressbar" aria-label="Knowledge" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
+      <span className="man-xp-label">Knowledge</span>
+      <span className="man-xp-track">
+        <span className="man-xp-fill" style={{ width: `${percent}%` }} />
+      </span>
+      <span className="man-xp-value">{max ? 'MAX' : percent}</span>
+    </div>
+  );
+}
+
 /** Staff user manual: public, so it can be read before signing in. */
 export function Manual() {
   const { user } = useSession();
@@ -440,6 +483,7 @@ export function Manual() {
           <img src={`${BASE}/img/logo.jpg`} alt="" />
           <span>RHU<em>QUEUE</em></span>
         </Link>
+        <KnowledgeBar />
         <div className="arcade-nav-actions">
           <button type="button" className="arcade-btn arcade-btn-ghost man-print" onClick={() => window.print()}>Print</button>
           <Link className="arcade-btn" to={user ? '/' : '/login'}>{user ? 'Back to console' : 'Sign in'}</Link>
