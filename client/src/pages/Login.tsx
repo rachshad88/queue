@@ -1,6 +1,6 @@
 import { BASE } from '../base';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { beginSession, useSession, type SessionUser } from '../auth';
 import { prefetchFor } from '../prefetch';
@@ -306,6 +306,7 @@ export function Login() {
           <button type="button" onClick={() => scrollToId('how')}>How to play</button>
           <button type="button" onClick={() => scrollToId('tickets')}>Tickets</button>
           <button type="button" onClick={() => scrollToId('services')}>Stages</button>
+          <button type="button" onClick={() => navigate('/manual')}>Manual</button>
         </nav>
         <div className="arcade-nav-actions">
           <SoundToggle />
@@ -370,6 +371,7 @@ export function Login() {
             <div className="arcade-actions">
               <button type="button" className="arcade-btn arcade-btn-big" onClick={() => scrollToId('how')}>▶ How to play</button>
               <a className="arcade-btn arcade-btn-ghost arcade-btn-big" href={`${BASE}/live`}>Live monitor</a>
+              <Link className="arcade-btn arcade-btn-ghost arcade-btn-big" to="/manual">📖 Staff manual</Link>
             </div>
           </div>
 
@@ -422,6 +424,7 @@ export function Login() {
           </div>
           <div className="arcade-footer-links">
             <a href={`${BASE}/live`}>Live monitor</a>
+            <Link to="/manual">User manual</Link>
             <button type="button" onClick={goToSignIn}>Staff sign in</button>
           </div>
           <p>© {new Date().getFullYear()} Rural Health Unit</p>

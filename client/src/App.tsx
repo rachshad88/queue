@@ -11,6 +11,7 @@ import { Departments } from './pages/Departments';
 import { KioskAbtc, KioskWaiting, Ticket } from './pages/Kiosk';
 import { Live } from './pages/Live';
 import { Login } from './pages/Login';
+import { Manual } from './pages/Manual';
 import { QueueLogs } from './pages/QueueLogs';
 import { SectionControl } from './pages/SectionControl';
 import { ServerHistory } from './pages/ServerHistory';
@@ -50,6 +51,7 @@ export function App() {
       <Route path="/kiosk/abtc" element={<KioskAbtc />} />
       <Route path="/ticket" element={<Ticket />} />
       <Route path="/live" element={<Live />} />
+      <Route path="/manual" element={<Manual />} />
       <Route path="/" element={<Protected><Console /></Protected>} />
       <Route path="/choose-section/:kind" element={<Protected><ChooseSection /></Protected>} />
       <Route path="/server-history" element={<Protected><ServerHistory /></Protected>} />

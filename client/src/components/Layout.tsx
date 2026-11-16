@@ -118,6 +118,7 @@ export function Layout({ title, actions, children }: { title: string; actions?: 
               }
             >
               {!kioskOnly && <Item to="/account" icon="account">My account</Item>}
+              <Item to="/manual" icon="page">User manual</Item>
               <button className="nav-item logout" onClick={() => void logout()}>
                 <Icon name="logout" />
                 <span>Logout</span>
