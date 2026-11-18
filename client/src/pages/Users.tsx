@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { api, query } from '../api';
+import { stepLabel } from '../components/Journey';
 import { Layout } from '../components/Layout';
+import { PasswordForm, ProfileForm } from './Account';
 import { Modal, Pagination, useApi, useToast } from '../components/ui';
+import { useQueryClient } from '@tanstack/react-query';
 import { formatDateTime } from '../format';
 
 const DEFAULT_FILTERS = { q: '', department: '', online: '', page: 1 };
@@ -66,6 +69,10 @@ export function Users() {
   };
   const set = (key: keyof typeof BLANK, value: string): void => setEditing((e) => (e ? { ...e, form: { ...e.form, [key]: value } } : e));
 
+  if (data && !isAdmin) {
+    return <MyRecord me={users[0] ?? null} activity={users[0] ? (data.activity_by_user?.[users[0].user_id] ?? []) : []} onSaved={reload} />;
+  }
+
   return (
     <Layout title={isAdmin ? 'Users' : 'My user record'} actions={isAdmin && <button className="btn btn-primary" onClick={() => setEditing({ id: null, form: BLANK })}>Add user</button>}>
       <div className="stack">
@@ -103,6 +110,7 @@ export function Users() {
             )}
           </form>
         )}
+        {isAdmin && <AccountRequests departments={data?.departments ?? []} roles={data?.roles ?? []} onDone={reload} />}
         <div className="table-wrap">
           <table>
             <thead>
@@ -207,5 +215,129 @@ export function Users() {
         </Modal>
       )}
     </Layout>
+  );
+}
+
+const initials = (u: User): string => `${u.firstname?.[0] ?? ''}${u.lastname?.[0] ?? ''}`.toUpperCase() || u.username.slice(0, 2).toUpperCase();
+
+/** A staffer's own record on one screen: who they are, their details to edit, their password, and what they did lately. */
+function MyRecord({ me, activity, onSaved }: { me: User | null; activity: { q: string; a: string; dt: string }[]; onSaved: () => void }) {
+  return (
+    <Layout title="My user record">
+      <div className="stack my-record">
+        {me && (
+          <section className="card my-record-head">
+            <span className="my-record-avatar" aria-hidden="true">{initials(me)}</span>
+            <div className="my-record-who">
+              <h2>{[me.firstname, me.middlename, me.lastname].filter(Boolean).join(' ')}</h2>
+              <p className="muted">{me.position || 'No position set'} · @{me.username}</p>
+            </div>
+            <dl className="my-record-facts">
+              <div><dt>Department</dt><dd>{me.department_name || '—'}</dd></div>
+              <div><dt>Role</dt><dd>{me.usertype}</dd></div>
+              <div><dt>Status</dt><dd><span className={`badge ${me.status === 'active' ? 'state-ok' : 'status-inactive'}`}>{me.status}</span> {me.online && <span className="badge badge-online">Online</span>}</dd></div>
+              <div><dt>Last sign-in</dt><dd>{formatDateTime(me.last_login_at) || 'Never'}</dd></div>
+            </dl>
+          </section>
+        )}
+        <div className="my-record-forms">
+          <ProfileForm onSaved={onSaved} />
+          <PasswordForm />
+        </div>
+        <section className="card">
+          <div className="card-head"><h2>My recent activity</h2><span className="muted">Latest {activity.length || ''} actions</span></div>
+          {activity.length === 0 ? (
+            <p className="muted">Nothing yet. Patients you call, serve or transfer will show here.</p>
+          ) : (
+            <div className="table-wrap">
+              <table>
+                <thead><tr><th>Ticket</th><th>What you did</th><th>When</th></tr></thead>
+                <tbody>
+                  {activity.map((a, i) => (
+                    <tr key={i}><td><strong>{a.q}</strong></td><td>{stepLabel(a.a)}</td><td className="nowrap">{formatDateTime(a.dt)}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </div>
+    </Layout>
+  );
+}
+
+type AccountRequest = { id: string; username: string; firstname: string; middlename: string; lastname: string; position: string; department_id: number | null; requested_at: string };
+
+/** Admins: staff who asked for an account. Confirm the department, pick the role, then approve or reject. */
+function AccountRequests({ departments, roles, onDone }: { departments: { id: number; name: string }[]; roles: string[]; onDone: () => void }) {
+  const toast = useToast();
+  const queryClient = useQueryClient();
+  const { data, reload } = useApi<{ success: boolean; requests?: AccountRequest[] }>('/account-requests');
+  const [choices, setChoices] = useState<Record<string, { department: string; usertype: string }>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+  const requests = data?.requests ?? [];
+  if (requests.length === 0) {
+    return null;
+  }
+
+  const choice = (r: AccountRequest) => choices[r.id] ?? { department: String(r.department_id ?? ''), usertype: 'staff' };
+  const choose = (r: AccountRequest, patch: Partial<{ department: string; usertype: string }>): void => setChoices((c) => ({ ...c, [r.id]: { ...choice(r), ...patch } }));
+  const finish = (result: Record<string, any>): void => {
+    toast(result.message ?? (result.success ? 'Done.' : 'That did not work.'), result.success ? 'success' : 'error');
+    reload();
+    onDone();
+    void queryClient.invalidateQueries({ queryKey: ['api', '/account-requests'] });
+  };
+  const approve = async (r: AccountRequest): Promise<void> => {
+    setBusy(r.id);
+    finish(await api(`/account-requests/${r.id}/approve`, { body: choice(r) }));
+    setBusy(null);
+  };
+  const reject = async (r: AccountRequest): Promise<void> => {
+    const reason = window.prompt(`Why are you rejecting ${r.username}? They will see this reason.`, '');
+    if (reason === null) {
+      return;
+    }
+    setBusy(r.id);
+    finish(await api(`/account-requests/${r.id}/reject`, { body: { reason } }));
+    setBusy(null);
+  };
+
+  return (
+    <section className="card account-requests">
+      <div className="card-head"><h2>Account requests</h2><span className="badge badge-online">{requests.length} waiting</span></div>
+      <p className="muted">Approved accounts start on the default password; the staffer is asked to change it at first sign-in.</p>
+      <div className="table-wrap">
+        <table>
+          <thead><tr><th>Name</th><th>Username</th><th>Department</th><th>Role</th><th>Requested</th><th className="right">Decision</th></tr></thead>
+          <tbody>
+            {requests.map((r) => (
+              <tr key={r.id}>
+                <td><strong>{[r.firstname, r.middlename, r.lastname].filter(Boolean).join(' ')}</strong><div className="muted" style={{ fontSize: '0.8rem' }}>{r.position || 'No position given'}</div></td>
+                <td>{r.username}</td>
+                <td>
+                  <select aria-label={`Department for ${r.username}`} value={choice(r).department} onChange={(e) => choose(r, { department: e.target.value })}>
+                    <option value="">None</option>
+                    {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </select>
+                </td>
+                <td>
+                  <select aria-label={`Role for ${r.username}`} value={choice(r).usertype} onChange={(e) => choose(r, { usertype: e.target.value })}>
+                    {roles.map((role) => <option key={role} value={role}>{role}</option>)}
+                  </select>
+                </td>
+                <td className="nowrap">{formatDateTime(r.requested_at)}</td>
+                <td className="right nowrap">
+                  <div className="row-actions">
+                    <button className="btn btn-sm btn-primary" disabled={busy === r.id} onClick={() => void approve(r)}>Approve</button>
+                    <button className="btn btn-sm btn-danger" disabled={busy === r.id} onClick={() => void reject(r)}>Reject</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }

@@ -51,6 +51,8 @@ export const config = {
     kiosk: { max: 30, seconds: 60 },
     passwordUpdate: { max: 3, seconds: 60 },
     backup: { max: 5, seconds: 60 },
+    accountRequest: { max: 5, seconds: 600 },
+    accountRequestStatus: { max: 20, seconds: 600 },
   },
 
   backup: {

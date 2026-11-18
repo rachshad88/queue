@@ -14,6 +14,7 @@ import { Login } from './pages/Login';
 import { Manual } from './pages/Manual';
 import { QueueLogs } from './pages/QueueLogs';
 import { QueueTrail } from './pages/QueueTrail';
+import { RequestAccount } from './pages/RequestAccount';
 import { SectionControl } from './pages/SectionControl';
 import { ServerHistory } from './pages/ServerHistory';
 import { Users } from './pages/Users';
@@ -53,6 +54,7 @@ export function App() {
       <Route path="/ticket" element={<Ticket />} />
       <Route path="/live" element={<Live />} />
       <Route path="/manual" element={<Manual />} />
+      <Route path="/request-account" element={<RequestAccount />} />
       <Route path="/" element={<Protected><Console /></Protected>} />
       <Route path="/choose-section/:kind" element={<Protected><ChooseSection /></Protected>} />
       <Route path="/server-history" element={<Protected><ServerHistory /></Protected>} />

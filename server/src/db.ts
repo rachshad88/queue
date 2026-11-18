@@ -66,6 +66,26 @@ export interface QueueDoc {
   return_code: string | null;
 }
 
+/** A staffer's request for an account, waiting for an admin (kept 30 days after a decision so its outcome can be checked). */
+export interface AccountRequestDoc {
+  _id?: ObjectId;
+  username: string;
+  username_lower: string;
+  firstname: string;
+  middlename: string;
+  lastname: string;
+  position: string;
+  department_id: number | null;
+  status: 'pending' | 'approved' | 'rejected';
+  /** Short code shown once to the requester; with the username it unlocks the status check. */
+  code: string;
+  reason: string | null;
+  created_at: Date;
+  decided_at: Date | null;
+  decided_by: number | null;
+  client_ip: string | null;
+}
+
 export interface QueueLogDoc {
   _id?: ObjectId;
   queue_id: number;
@@ -171,6 +191,7 @@ const col = <T extends { _id?: unknown }>(name: string) => (): Collection<T> => 
 
 export const departments = col<DepartmentDoc>('departments');
 export const users = col<UserDoc>('users');
+export const accountRequests = col<AccountRequestDoc>('account_requests');
 export const sections = col<SectionDoc>('sections');
 export const queue = col<QueueDoc>('queue');
 export const queueLog = col<QueueLogDoc>('queue_log');
@@ -202,6 +223,9 @@ export const isDuplicateKey = (error: unknown): boolean =>
 async function ensureIndexes(): Promise<void> {
   await users().createIndex({ username_lower: 1 }, { unique: true });
   await users().createIndex({ department_id: 1 });
+  // One waiting request per username; decided requests expire 30 days after the decision (pending ones have no decided_at).
+  await accountRequests().createIndex({ username_lower: 1 }, { unique: true, partialFilterExpression: { status: 'pending' } });
+  await accountRequests().createIndex({ decided_at: 1 }, { expireAfterSeconds: 30 * 86400 });
 
   await queue().createIndex({ department_id: 1, status: 1, category_rank: 1, arrival_at: 1 });
   await queue().createIndex({ department_id: 1, created_at: 1 });

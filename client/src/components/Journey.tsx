@@ -34,6 +34,8 @@ const STEP_LABELS: Record<string, string> = {
   returned_to_queue: 'Put back in the queue',
   taken_over: 'Taken over by another staffer',
   transferred_in: 'Transferred',
+  transferred_out: 'Sent to another department',
+  prioritized_out: 'Sent back as a returning patient',
   prioritized_in: 'Re-queued as a returning patient',
   pool_taken: 'Taken by mutual help',
   hold: 'Put on hold',
@@ -41,7 +43,8 @@ const STEP_LABELS: Record<string, string> = {
   remove: 'Removed from the queue',
 };
 
-const stepLabel = (action: string): string => STEP_LABELS[action] ?? action.replace(/_/g, ' ');
+/** A queue log action in plain words. */
+export const stepLabel = (action: string): string => STEP_LABELS[action] ?? action.replace(/_/g, ' ');
 
 /** Where one ticket has been today: the departments in order, then every step with its time and staff. */
 export function JourneyModal({ queueId, onClose }: { queueId: number; onClose: () => void }) {

@@ -10,7 +10,7 @@ import { revokeOtherSessions, revokeSessions } from '../services/singleLogin';
 import { releaseSectionsForUser } from '../services/stations';
 import { minutesAgo } from '../time';
 import { clientIp, contains, escapeRegex, num, paginate, sortDepartments, str, trimmed } from '../util';
-import { departmentField, LIMITS, passwordProblem, profileInput, textField } from '../validation';
+import { departmentField, LIMITS, passwordProblem, profileInput, textField, type ProfileInput } from '../validation';
 
 export const adminRouter = Router();
 
@@ -20,7 +20,7 @@ const SUPERADMIN_ROLE = /^\s*superadmin\s*$/i;
 
 /** Superadmin accounts are hidden from user management; only a superadmin may touch or create one. */
 const isSuperadminAccount = (u: Pick<UserDoc, 'usertype'>): boolean => SUPERADMIN_ROLE.test(u.usertype);
-const rolesFor = (isSuperadmin: boolean): string[] => (isSuperadmin ? ASSIGNABLE_ROLES : ASSIGNABLE_ROLES.filter((r) => r !== 'superadmin'));
+export const rolesFor = (isSuperadmin: boolean): string[] => (isSuperadmin ? ASSIGNABLE_ROLES : ASSIGNABLE_ROLES.filter((r) => r !== 'superadmin'));
 
 /** True when the acting session may not see or change the target account. */
 async function isHiddenFrom(id: number, actorIsSuperadmin: boolean): Promise<boolean> {
@@ -48,7 +48,7 @@ const publicUser = (u: UserDoc, deptNames: Map<number, string>, onlineSince: Dat
   online: !!u.login_token && !!u.last_active && u.last_active >= onlineSince,
 });
 
-async function usernameTaken(username: string, exceptId?: number): Promise<boolean> {
+export async function usernameTaken(username: string, exceptId?: number): Promise<boolean> {
   const filter: Filter<UserDoc> = { username_lower: username.toLowerCase() };
   if (exceptId) {
     filter._id = { $ne: exceptId };
@@ -116,10 +116,10 @@ adminRouter.get('/users', async (req, res) => {
   const allDepartments = await departments().find().sort({ name: 1 }).toArray();
   const deptNames = new Map(allDepartments.map((d) => [d._id, d.name]));
 
-  // The five most recent audit entries per listed user.
+  // Recent audit entries per listed user: five each in the admin list, more on a staffer's own record.
   const activity: Record<number, { q: string; a: string; dt: Date }[]> = {};
   for (const u of rows) {
-    const logs = await queueLog().find({ user_id: u._id }).sort({ created_at: -1 }).limit(5).toArray();
+    const logs = await queueLog().find({ user_id: u._id }).sort({ created_at: -1 }).limit(isAdmin ? 5 : 15).toArray();
     if (logs.length) {
       activity[u._id] = logs.map((l) => ({ q: l.queue_number, a: l.action, dt: l.created_at }));
     }
@@ -137,6 +137,37 @@ adminRouter.get('/users', async (req, res) => {
     paging,
   });
 });
+
+/** Create an active account on the default password (the user is asked to change it at first sign-in). */
+export async function insertUser(
+  profile: ProfileInput,
+  role: string,
+  departmentId: number | null,
+): Promise<{ success: true; user_id: number } | { success: false; error: string; message: string }> {
+  const id = await nextId('users');
+  try {
+    await users().insertOne({
+      _id: id,
+      username_lower: profile.username.toLowerCase(),
+      password: await hash(config.defaultPassword),
+      usertype: role,
+      ...profile,
+      department_id: departmentId,
+      status: 'active',
+      login_token: null,
+      last_active: null,
+      last_login_at: null,
+      last_ip: null,
+    });
+  } catch (error) {
+    if (isDuplicateKey(error)) {
+      return { success: false, error: 'duplicate', message: 'That username is already taken.' };
+    }
+    console.error('user add failed', error);
+    return { success: false, error: 'db', message: 'Could not save the user. Please try again.' };
+  }
+  return { success: true, user_id: id };
+}
 
 adminRouter.post('/users', requireAdmin, async (req, res) => {
   const profile = profileInput(req.body);
@@ -159,28 +190,9 @@ adminRouter.post('/users', requireAdmin, async (req, res) => {
     res.json({ success: false, error: 'invalid', message: department.message });
     return;
   }
-  try {
-    await users().insertOne({
-      _id: await nextId('users'),
-      username_lower: username.toLowerCase(),
-      // New accounts start on the default password and are prompted to change it.
-      password: await hash(config.defaultPassword),
-      usertype: role,
-      ...profile.value,
-      department_id: department.value,
-      status: 'active',
-      login_token: null,
-      last_active: null,
-      last_login_at: null,
-      last_ip: null,
-    });
-  } catch (error) {
-    if (isDuplicateKey(error)) {
-      res.json({ success: false, error: 'duplicate', message: 'That username is already taken.' });
-      return;
-    }
-    console.error('user add failed', error);
-    res.json({ success: false, error: 'db', message: 'Could not save the user. Please try again.' });
+  const added = await insertUser(profile.value, role, department.value);
+  if (!added.success) {
+    res.json(added);
     return;
   }
   res.json({ success: true, message: 'User added. Their starting password is the default one.' });

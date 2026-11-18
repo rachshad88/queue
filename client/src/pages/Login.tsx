@@ -313,6 +313,7 @@ export function Login() {
         <div className="arcade-nav-actions">
           <SoundToggle />
           <a className="arcade-btn arcade-btn-ghost" href={`${BASE}/live`}>Live</a>
+          <Link className="arcade-btn arcade-btn-ghost" to="/request-account">Request account</Link>
           <button type="button" className="arcade-btn" onClick={goToSignIn}>Sign in</button>
         </div>
         <span className="arcade-nav-runner" aria-hidden="true"><Walker /></span>
@@ -404,7 +405,7 @@ export function Login() {
             <button className="arcade-btn arcade-btn-big arcade-start" disabled={busy}>
               {busy ? 'Loading…' : '▶ Press start'}
             </button>
-            <p className="arcade-credit" aria-hidden="true">Credit 01</p>
+            <Link className="arcade-btn arcade-btn-ghost arcade-request-btn" to="/request-account">✚ New staff? Request account</Link>
           </form>
         </div>
       </section>
@@ -431,6 +432,7 @@ export function Login() {
             <a href={`${BASE}/live`}>Live monitor</a>
             <Link to="/manual">User manual</Link>
             <button type="button" onClick={goToSignIn}>Staff sign in</button>
+            <Link to="/request-account">Request an account</Link>
           </div>
           <p>© {new Date().getFullYear()} Rural Health Unit</p>
         </div>

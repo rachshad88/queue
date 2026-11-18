@@ -4,6 +4,7 @@ import express, { type ErrorRequestHandler } from 'express';
 import { config } from './config';
 import { CONSOLE_PATHS, refuseKioskMode, requireLogin, verifyCsrf } from './middleware/auth';
 import { detectAutomatedVisitor, securityRateLimit, trackResponses } from './middleware/security';
+import { accountRequestAdminRouter, accountRequestPublicRouter } from './routes/accountRequests';
 import { adminRouter } from './routes/admin';
 import { authRouter } from './routes/auth';
 import { backupRouter } from './routes/backup';
@@ -47,6 +48,7 @@ export function createApp(): express.Express {
   api.use(verifyCsrf);
   api.use(authRouter);
   api.use(publicRouter);
+  api.use(accountRequestPublicRouter);
   // Everything below requires a signed-in, single-device session.
   api.use(requireLogin);
   api.use(CONSOLE_PATHS, refuseKioskMode);
@@ -54,6 +56,7 @@ export function createApp(): express.Express {
   api.use(transferRouter);
   api.use(sectionsRouter);
   api.use(adminRouter);
+  api.use(accountRequestAdminRouter);
   api.use(reportsRouter);
   api.use(backupRouter);
   api.use((_req, res) => {
