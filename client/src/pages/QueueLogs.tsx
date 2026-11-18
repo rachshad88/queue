@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { query } from '../api';
 import { Layout } from '../components/Layout';
+import { JourneyModal } from '../components/Journey';
 import { Pagination, useApi } from '../components/ui';
 import { formatDateTime } from '../format';
 
@@ -11,6 +12,7 @@ export const QUEUE_LOGS_PATH = `/queue-logs${query(BLANK)}`;
 export function QueueLogs() {
   const [filters, setFilters] = useState(BLANK);
   const [search, setSearch] = useState('');
+  const [journeyFor, setJourneyFor] = useState<number | null>(null);
   const { data, loading } = useApi(`/queue-logs${query(filters)}`);
   const change = (patch: Partial<typeof BLANK>): void => setFilters((f) => ({ ...f, ...patch, page: 1 }));
 
@@ -53,16 +55,17 @@ export function QueueLogs() {
         </form>
         <div className="table-wrap">
           <table>
-            <thead><tr><th>When</th><th>Queue number</th><th>Action</th><th>Change</th><th>Department</th><th>Operator</th><th>Device IP</th></tr></thead>
+            <thead><tr><th>When</th><th>Queue number</th><th>Action</th><th>Change</th><th>Department</th><th>From → To</th><th>Operator</th><th>Device IP</th></tr></thead>
             <tbody>
-              {!loading && (data?.records ?? []).length === 0 && <tr><td colSpan={7} className="empty">No log entries for this filter.</td></tr>}
+              {!loading && (data?.records ?? []).length === 0 && <tr><td colSpan={8} className="empty">No log entries for this filter.</td></tr>}
               {(data?.records ?? []).map((r: Record<string, any>) => (
                 <tr key={r.id}>
                   <td className="nowrap">{formatDateTime(r.created_at)}</td>
-                  <td><strong>{r.queue_number}</strong></td>
+                  <td><button type="button" className="ticket-link" title="See where this ticket has been" onClick={() => setJourneyFor(r.queue_id)}>{r.queue_number}</button></td>
                   <td>{r.action}</td>
                   <td>{r.old_status ?? ''}{r.new_status ? ` to ${r.new_status}` : ''}</td>
                   <td>{r.department}</td>
+                  <td className="nowrap">{r.from_department ? <>{r.from_department} → <strong>{r.to_department}</strong></> : <span className="muted">—</span>}</td>
                   <td>
                     {r.operator_name || <span className="muted">System</span>}
                     {r.approved_by && <div className="muted" style={{ fontSize: '0.8rem' }}>Approved by {r.approved_by}</div>}
@@ -73,6 +76,7 @@ export function QueueLogs() {
             </tbody>
           </table>
         </div>
+        {journeyFor !== null && <JourneyModal queueId={journeyFor} onClose={() => setJourneyFor(null)} />}
         {data?.paging && <Pagination paging={data.paging} onPage={(page) => setFilters((f) => ({ ...f, page }))} />}
       </div>
     </Layout>

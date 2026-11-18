@@ -2,6 +2,7 @@ import type { SessionUser } from './auth';
 import { AUDIT_TRAIL_PATH } from './pages/AuditTrail';
 import { DEPARTMENTS_PATH } from './pages/Departments';
 import { QUEUE_LOGS_PATH } from './pages/QueueLogs';
+import { QUEUE_TRAIL_PATH } from './pages/QueueTrail';
 import { SERVER_HISTORY_PATH } from './pages/ServerHistory';
 import { USERS_PATH } from './pages/Users';
 import { apiQuery, consoleQueueQuery, queryClient } from './queryClient';
@@ -12,7 +13,7 @@ export function pathsFor(user: SessionUser): string[] {
     return [];
   }
   const dept = user.department.toUpperCase();
-  const paths = ['/console', SERVER_HISTORY_PATH, AUDIT_TRAIL_PATH, USERS_PATH];
+  const paths = ['/console', SERVER_HISTORY_PATH, QUEUE_TRAIL_PATH, AUDIT_TRAIL_PATH, USERS_PATH];
   if (dept === 'WAITING AREA') {
     paths.push('/sections/waiting');
   } else if (dept === 'ADMISSION') {
@@ -73,6 +74,7 @@ export function prefetchFor(user: SessionUser | null, { now = false }: { now?: b
 /** Menu link → the API read its page makes first. */
 const ROUTE_PATHS: Record<string, () => string> = {
   '/server-history': () => SERVER_HISTORY_PATH,
+  '/queue-trail': () => QUEUE_TRAIL_PATH,
   '/audit-trail': () => AUDIT_TRAIL_PATH,
   '/users': () => USERS_PATH,
   '/departments': () => DEPARTMENTS_PATH,

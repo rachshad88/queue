@@ -799,9 +799,9 @@ tr.is-unattended td { background: var(--amber-soft); }
   text-shadow: 0 0 6px #fff, 0 0 18px var(--a-pink), 0 0 42px var(--a-pink), 4px 4px 0 #5b0f63;
   animation: title-in 900ms steps(9) backwards;
 }
-.arcade-title::before, .arcade-title::after { content: attr(data-text); position: absolute; inset: 0; pointer-events: none; text-shadow: none; opacity: 0; }
-.arcade-title::before { color: var(--a-cyan); animation: glitch-a 5s steps(1) infinite; }
-.arcade-title::after { color: var(--a-pink); animation: glitch-b 5s steps(1) infinite; }
+.arcade-title > span::before, .arcade-title > span::after { content: attr(data-text); position: absolute; inset: 0; pointer-events: none; text-shadow: none; opacity: 0; }
+.arcade-title > span::before { color: var(--a-cyan); animation: glitch-a 5s steps(1) infinite; }
+.arcade-title > span::after { color: var(--a-pink); animation: glitch-b 5s steps(1) infinite; }
 @keyframes title-in { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
 @keyframes glitch-a { 0%, 91%, 100% { opacity: 0; } 92% { opacity: 0.8; transform: translate(-4px, 0); clip-path: inset(10% 0 60% 0); } 94% { opacity: 0.8; transform: translate(3px, 0); clip-path: inset(55% 0 20% 0); } 96% { opacity: 0; } }
 @keyframes glitch-b { 0%, 92%, 100% { opacity: 0; } 93% { opacity: 0.8; transform: translate(4px, 0); clip-path: inset(40% 0 35% 0); } 95% { opacity: 0.8; transform: translate(-3px, 0); clip-path: inset(75% 0 5% 0); } 97% { opacity: 0; } }
@@ -867,7 +867,7 @@ tr.is-unattended td { background: var(--amber-soft); }
   .arcade-hero-inner { grid-template-columns: minmax(0, 1fr); padding-top: 1.5rem; }
   .arcade-cabinet { order: -1; width: 100%; max-width: 440px; margin: 0 auto; }
   .arcade-nav-actions .arcade-btn-ghost { display: none; }
-  .arcade-sun { top: 4%; right: 5%; }
+  .arcade-sun { top: 4%; left: 5%; right: auto; }
 }
 @media (max-width: 560px) {
   .arcade-brand { font-size: 0.7rem; }
@@ -2039,3 +2039,114 @@ body { background-color: #f2f8ff; }
   .man-faq-a { grid-template-rows: 1fr; }
   .man-faq-a p { opacity: 1; transform: none; }
 }
+
+/* ---- Landing hero: full-screen title screen. Sign-in hangs on the left, title and copy on the right. ---- */
+.arcade-hero { min-height: calc(100svh - var(--nav-h, 66px)); align-items: stretch; }
+.arcade-hero-inner {
+  --gutter: clamp(1rem, 4vw, 4.5rem);
+  width: 100%; max-width: none; min-height: 100%;
+  padding: clamp(1rem, 3vh, 2rem) var(--gutter) calc(var(--amb-w) * 0.85 + 2.5rem);
+  grid-template-columns: minmax(0, 400px) minmax(0, 1fr); grid-template-rows: auto auto 1fr;
+  grid-template-areas: "hud hud" "form title" "form copy"; gap: clamp(1rem, 3vh, 2rem) clamp(2rem, 5vw, 6rem); align-items: start;
+}
+.arcade-hud { grid-area: hud; max-width: none; margin: 0; align-items: center; }
+.arcade-title { grid-area: title; max-width: none; font-size: clamp(1.4rem, min(4.6vw, 6.4vh), 5.4rem) !important; line-height: 1.25 !important; }
+.arcade-title > span { position: relative; display: block; width: fit-content; }
+.arcade-title > span:nth-child(2) { font-size: 1.15em; color: var(--a-yellow); }
+.arcade-hero-copy { grid-area: copy; justify-self: end; text-align: right; }
+.arcade-hero-copy .arcade-lede { margin-left: auto; }
+.arcade-hero-copy .arcade-actions { justify-content: flex-end; }
+
+/* Sign-in: a green highway sign hanging from an arm, on a pole at the left edge of the screen. */
+.arcade-billboard { grid-area: form; align-self: center; margin-top: 64px; }
+.arcade .arcade-billboard {
+  padding: 2.2rem 1.6rem 1.4rem; background: var(--a-sign); border-radius: 12px;
+  box-shadow: inset 0 0 0 4px #fff, 0 0 0 4px var(--a-sign-edge), 0 14px 0 4px rgba(18, 5, 30, 0.3);
+}
+/* The pole: from just above the arm down to the ground. */
+.arcade-billboard::before {
+  content: ''; position: absolute; z-index: -1; top: -78px; left: calc(-1 * var(--gutter) + 12px); width: 18px; height: 100vh;
+  background: linear-gradient(90deg, #9aa0ad 0 30%, #d7dbe3 30% 60%, #7c818d 60%); box-shadow: 0 0 0 3px #12051e;
+}
+.arcade-billboard::after { content: none; }
+/* The arm along the top and the two chains the sign hangs from. */
+.arcade-hanger {
+  position: absolute; z-index: -1; left: 0; right: 0; bottom: 100%; height: 64px; pointer-events: none;
+  background:
+    repeating-linear-gradient(to bottom, #12051e 0 3px, #b9bfcb 3px 9px) 16% 100% / 6px 52px no-repeat,
+    repeating-linear-gradient(to bottom, #12051e 0 3px, #b9bfcb 3px 9px) 84% 100% / 6px 52px no-repeat;
+}
+.arcade-hanger::before {
+  content: ''; position: absolute; top: 0; left: calc(-1 * var(--gutter) + 12px); right: 10%; height: 14px;
+  background: linear-gradient(to bottom, #d7dbe3 0 40%, #9aa0ad 40% 75%, #7c818d 75%); box-shadow: 0 0 0 3px #12051e;
+}
+.arcade-hanger::after {
+  content: ''; position: absolute; top: 10px; left: calc(-1 * var(--gutter) + 26px); width: 46px; height: 46px;
+  border-top: 6px solid #9aa0ad; transform: skewY(40deg); transform-origin: top left; filter: drop-shadow(0 0 0 #12051e);
+}
+.arcade-billboard-tab {
+  position: absolute; top: 0; right: 1.4rem; translate: 0 -55%; padding: 0.5rem 0.75rem; border-radius: 6px;
+  font-family: var(--a-pixel); font-size: 0.55rem; text-transform: uppercase; color: #12051e; background: var(--a-yellow);
+  box-shadow: inset 0 0 0 3px #12051e;
+}
+
+@media (min-width: 1100px) {
+  /* Wide screens: the copy stays on the grass beside the road, so the ambulance keeps the middle. */
+  .arcade-hero-inner { padding-bottom: clamp(1.5rem, 5vh, 3.5rem); }
+  .arcade-title { margin-top: clamp(0.5rem, 3vh, 2.5rem); }
+  .arcade-hero-copy { align-self: end; max-width: min(640px, calc(50vw - var(--amb-w) / 2 - var(--gutter) - 2rem)); }
+  .arcade-lede { max-width: none; margin-top: 0; }
+  /* Traffic passes behind the copy, so it gets a dark roadside panel. */
+  .arcade .arcade-hero-copy { padding: 1.2rem 1.3rem 1.4rem; background: rgba(18, 5, 30, 0.62); border-radius: 8px; box-shadow: 0 0 0 3px #12051e; }
+  .arcade-hero-copy .arcade-actions { margin-top: 1.2rem; gap: 0.9rem; }
+}
+@media (min-width: 861px) and (max-width: 1099px) {
+  /* The title shares the width with the sign, so it scales down to keep clear of it. */
+  .arcade-hero .arcade-title { font-size: clamp(1.4rem, min(3.7vw, 6.4vh), 5.4rem) !important; }
+}
+@media (max-width: 860px) {
+  .arcade-hero-inner { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: "hud" "form" "title" "copy"; }
+  .arcade-billboard { margin-top: 1rem; }
+  .arcade-billboard::before, .arcade-hanger { display: none; }
+}
+@media (max-width: 560px) {
+  .arcade-hud { font-size: 0.5rem; gap: 0.6rem; }
+}
+/* Title-screen text keeps a thick dark outline wherever the layout puts it, so it reads over sky, clouds and sun. */
+.arcade-hero-inner { --ol: #12051e; }
+.arcade-hero .arcade-title {
+  text-shadow: 4px 0 0 var(--ol), -4px 0 0 var(--ol), 0 4px 0 var(--ol), 0 -4px 0 var(--ol), 4px 4px 0 var(--ol), -4px -4px 0 var(--ol), 4px -4px 0 var(--ol), -4px 4px 0 var(--ol), 8px 8px 0 rgba(18, 5, 30, 0.55);
+}
+/* The title types itself in, left to right, one line after another. */
+.arcade-hero .arcade-title { animation: none; }
+.arcade-hero .arcade-title > span { animation: title-line-in 900ms steps(14) backwards; animation-delay: calc(200ms + var(--i) * 650ms); }
+@keyframes title-line-in {
+  from { clip-path: inset(-0.4em 100% -0.4em 0); }
+  to { clip-path: inset(-0.4em -0.4em -0.4em -0.4em); }
+}
+/* Title lines share one right edge. */
+.arcade-hero .arcade-title { justify-self: end; text-align: right; }
+.arcade-hero .arcade-title > span { margin-inline: auto 0; }
+/* The sun sits in the top-left of the sky. */
+.arcade-hero .arcade-sun { left: 7%; right: auto; }
+
+/* ---- Ticket journey: a ticket number opens where that ticket has been ---- */
+.ticket-link { white-space: nowrap; font: inherit; font-weight: 800; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+.ticket-link:hover, .ticket-link:focus-visible { color: var(--accent, #1d5fa8); text-decoration-style: solid; }
+.journey { display: grid; gap: 1.2rem; }
+.journey-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.8rem; }
+.journey-path { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.journey-path li { padding: 0.45rem 0.7rem; font-weight: 700; font-size: 0.85rem; border-radius: 6px; background: rgba(18, 5, 30, 0.06); box-shadow: inset 0 0 0 2px rgba(18, 5, 30, 0.18); }
+.journey-path li + li::before { content: '→'; margin: 0 0.6rem 0 -0.2rem; font-weight: 400; opacity: 0.6; }
+.journey-path li.is-current { background: #1f7a3d; color: #fff; box-shadow: none; }
+.journey-steps { list-style: none; margin: 0; padding: 0 0 0 1.1rem; border-left: 3px solid rgba(18, 5, 30, 0.15); display: grid; gap: 0.9rem; }
+.journey-steps li { position: relative; display: grid; grid-template-columns: minmax(9.5rem, auto) 1fr; gap: 0.2rem 1rem; line-height: 1.45; }
+.journey-steps li::before { content: ''; position: absolute; left: calc(-1.1rem - 7.5px); top: 0.35rem; width: 12px; height: 12px; border-radius: 50%; background: #fff; box-shadow: inset 0 0 0 3px rgba(18, 5, 30, 0.35); }
+.journey-steps li.is-move::before { background: #1f7a3d; box-shadow: none; }
+.journey-steps time { font-size: 0.85rem; color: var(--muted, #6b6880); white-space: nowrap; }
+@media (max-width: 560px) { .journey-steps li { grid-template-columns: 1fr; } }
+.check-field { display: inline-flex; align-items: center; gap: 0.5rem; align-self: end; min-height: 44px; font-weight: 600; cursor: pointer; }
+.check-field input { width: 18px; height: 18px; }
+.journey-path-sm { gap: 0.3rem; }
+.journey-path-sm li { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
+.journey-path-sm li + li::before { margin-right: 0.4rem; }

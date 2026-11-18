@@ -3,6 +3,7 @@ import type { Document, Filter } from 'mongodb';
 import { departments, queue, queueLog, type QueueDoc, type QueueLogDoc } from '../db';
 import { requireSuperadmin } from '../middleware/auth';
 import { staffNames } from '../services/lookups';
+import { routeOf } from '../services/queueLog';
 import { addDays, manilaDateStart, manilaDayString } from '../time';
 import { contains, num, paginate, sortDepartments, str, trimmed } from '../util';
 
@@ -119,18 +120,24 @@ reportsRouter.get('/queue-logs', requireSuperadmin, async (req, res) => {
     to: range.to,
     today: manilaDayString(),
     date_preset: datePreset(range.from, range.to),
-    records: logs.map((l) => ({
-      id: String(l._id),
-      queue_number: l.queue_number,
-      action: l.action,
-      old_status: l.old_status,
-      new_status: l.new_status,
-      client_ip: l.client_ip,
-      created_at: l.created_at,
-      department: deptNames.get(l.department_id) ?? '',
-      operator_name: l.user_id ? (names[l.user_id] ?? '') : '',
-      approved_by: l.approved_by ? (names[l.approved_by] ?? 'Deleted user') : null,
-    })),
+    records: logs.map((l) => {
+      const route = routeOf(l);
+      return {
+        id: String(l._id),
+        queue_number: l.queue_number,
+        action: l.action,
+        old_status: l.old_status,
+        new_status: l.new_status,
+        client_ip: l.client_ip,
+        created_at: l.created_at,
+        department: deptNames.get(l.department_id) ?? '',
+        from_department: route ? (deptNames.get(route.from) ?? '') : null,
+        to_department: route ? (deptNames.get(route.to) ?? '') : null,
+        queue_id: l.queue_id,
+        operator_name: l.user_id ? (names[l.user_id] ?? '') : '',
+        approved_by: l.approved_by ? (names[l.approved_by] ?? 'Deleted user') : null,
+      };
+    }),
     paging,
   });
 });

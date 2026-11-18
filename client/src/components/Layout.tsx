@@ -92,6 +92,7 @@ export function Layout({ title, actions, children }: { title: string; actions?: 
                 {dept === 'WAITING AREA' && <Item to="/kiosk/waiting" icon="ticket">Waiting tickets</Item>}
                 {(dept === 'ABTC' || user.is_superadmin) && <Item to="/kiosk/abtc" icon="ticket">ABTC tickets</Item>}
                 <Item to="/server-history" icon="history">Queue list</Item>
+                <Item to="/queue-trail" icon="transfer">Queue trail</Item>
                 <Item to="/audit-trail" icon="search">Audit trail</Item>
                 {user.is_superadmin && <Item to="/queue-logs" icon="logs">Queue logs</Item>}
                 {isAdmin ? (

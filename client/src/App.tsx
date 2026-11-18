@@ -13,6 +13,7 @@ import { Live } from './pages/Live';
 import { Login } from './pages/Login';
 import { Manual } from './pages/Manual';
 import { QueueLogs } from './pages/QueueLogs';
+import { QueueTrail } from './pages/QueueTrail';
 import { SectionControl } from './pages/SectionControl';
 import { ServerHistory } from './pages/ServerHistory';
 import { Users } from './pages/Users';
@@ -56,6 +57,7 @@ export function App() {
       <Route path="/choose-section/:kind" element={<Protected><ChooseSection /></Protected>} />
       <Route path="/server-history" element={<Protected><ServerHistory /></Protected>} />
       <Route path="/audit-trail" element={<Protected><AuditTrail /></Protected>} />
+      <Route path="/queue-trail" element={<Protected><QueueTrail /></Protected>} />
       <Route path="/queue-logs" element={<Protected gate="superadmin"><QueueLogs /></Protected>} />
       <Route path="/users" element={<Protected><Users /></Protected>} />
       <Route path="/departments" element={<Protected gate="admin"><Departments /></Protected>} />

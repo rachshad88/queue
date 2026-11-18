@@ -361,6 +361,69 @@ describe('transfers and returning patients', () => {
     expect(listed.transferred_from_name).toBe('ADMISSION');
   });
 
+  it('traces a transferred ticket: from and to in the queue logs, and its journey for the departments it visited', async () => {
+    await makeUser('adm1', 3);
+    await makeUser('lab1', 5);
+    await makeUser('pharm1', 6);
+    const moved = await seedRow(3, 'R-001', { secondsAgo: 3000 });
+    const adm = await loggedIn('adm1');
+    await adm.post('/api/sections/admission/assign', { section_id: 1 });
+    await adm.post('/api/serve-next', { department_id: 3 });
+    await adm.post('/api/transfer', { department_id: 5 });
+    const lab = await loggedIn('lab1');
+    await lab.post('/api/serve-next', { department_id: 5 });
+    await lab.post('/api/transfer', { department_id: 6 });
+
+    const admin = await loggedIn('superadmin');
+    const arrivals = (await admin.get('/api/queue-logs?action=transferred_in')).body.records;
+    expect(arrivals.map((r: { from_department: string; to_department: string }) => `${r.from_department}>${r.to_department}`).sort()).toEqual(['ADMISSION>LABORATORY', 'LABORATORY>PHARMACY']);
+    expect((await admin.get('/api/queue-logs?action=finished')).body.records.every((r: { from_department: unknown }) => r.from_department === null)).toBe(true);
+
+    const journey = (await lab.get(`/api/queue-journey?id=${moved}`)).body;
+    expect(journey).toMatchObject({ success: true, issued_in: 'ADMISSION', department: 'PHARMACY', path: ['ADMISSION', 'LABORATORY', 'PHARMACY'] });
+    expect(journey.steps.map((st: { action: string }) => st.action)).toEqual(['serving', 'transferred_in', 'serving', 'transferred_in']);
+    expect(journey.steps[1]).toMatchObject({ from_department: 'ADMISSION', to_department: 'LABORATORY', operator: expect.any(String) });
+
+    await makeUser('clinic1', 1);
+    expect((await (await loggedIn('clinic1')).get(`/api/queue-journey?id=${moved}`)).body).toMatchObject({ success: false, message: 'Access denied' });
+    expect((await admin.get(`/api/queue-journey?id=${moved}`)).body.success).toBe(true);
+    expect((await admin.get('/api/queue-journey?id=999999')).body).toMatchObject({ success: false, message: 'That ticket was not found.' });
+  });
+
+  it('lists the day\'s tickets with their route on the queue trail, scoped to the staffer\'s department', async () => {
+    await makeUser('adm1', 3);
+    await makeUser('lab1', 5);
+    await makeUser('pharm1', 6);
+    const moved = await seedRow(3, 'R-001', { secondsAgo: 3000 });
+    const stayed = await seedRow(3, 'R-002', { secondsAgo: 2000 });
+    const elsewhere = await seedRow(6, 'R-003', { secondsAgo: 1000 });
+    const adm = await loggedIn('adm1');
+    await adm.post('/api/sections/admission/assign', { section_id: 1 });
+    await adm.post('/api/serve-next', { department_id: 3 });
+    await adm.post('/api/transfer', { department_id: 5 });
+
+    const lab = (await (await loggedIn('lab1')).get('/api/queue-trail')).body;
+    expect(lab).toMatchObject({ success: true, department: 'LABORATORY', can_pick: false });
+    expect(lab.records).toHaveLength(1);
+    expect(lab.records[0]).toMatchObject({ id: moved, department: 'LABORATORY', path: ['ADMISSION', 'LABORATORY'], moves: 1 });
+
+    const admTrail = (await adm.get('/api/queue-trail')).body.records.map((r: { id: number }) => r.id);
+    expect(admTrail.sort()).toEqual([moved, stayed].sort());
+    expect((await adm.get('/api/queue-trail?moved=1')).body.records.map((r: { id: number }) => r.id)).toEqual([moved]);
+    // Staff may look back over any dates but never outside their own department.
+    expect((await adm.get('/api/queue-trail?department=6&from=2020-01-01&to=2020-01-02')).body).toMatchObject({ department: 'ADMISSION', from: '2020-01-01', to: '2020-01-02', records: [] });
+    expect((await adm.get('/api/queue-trail?department=6&from=2020-01-01')).body.records.map((r: { id: number }) => r.id).sort()).toEqual([moved, stayed].sort());
+
+    const admin = await loggedIn('superadmin');
+    const all = (await admin.get('/api/queue-trail')).body;
+    expect(all.can_pick).toBe(true);
+    expect(all.records.map((r: { id: number }) => r.id).sort()).toEqual([moved, stayed, elsewhere].sort());
+    expect((await admin.get('/api/queue-trail?department=6')).body.records.map((r: { id: number }) => r.id)).toEqual([elsewhere]);
+    expect((await admin.get('/api/queue-trail?q=R-001')).body.records.map((r: { id: number }) => r.id)).toEqual([moved]);
+    expect((await admin.get('/api/queue-trail?from=2020-01-01&to=2020-01-01')).body).toMatchObject({ from: '2020-01-01', records: [] });
+    expect((await admin.get('/api/queue-trail?from=2099-01-01')).body.from).toBe(all.today);
+  });
+
   it('promotes a regular ticket to priority only from the laboratory to a clinic', async () => {
     await makeUser('lab1', 5);
     const toClinic = await seedRow(5, 'R-001', { secondsAgo: 300 });

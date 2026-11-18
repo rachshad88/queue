@@ -1,5 +1,5 @@
 import { BASE } from '../base';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { beginSession, useSession, type SessionUser } from '../auth';
@@ -15,6 +15,8 @@ const REASONS: Record<string, string> = {
 };
 
 type LiveConfig = { departments?: { id: number; name: string }[]; admission_sections?: string[]; waiting_sections?: string[] };
+
+const TITLE_LINES = ['RHU Queueing', 'Management', 'System v2'];
 
 const scrollToId = (id: string): void => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -356,15 +358,16 @@ export function Login() {
         </div>
 
         <div className="arcade-hero-inner" id="sign-in">
+          <div className="arcade-hud">
+            <span aria-hidden="true">1UP <b>{clock.time}</b></span>
+            <span aria-hidden="true">{clock.date}</span>
+          </div>
+          <h1 className="arcade-title">
+            {TITLE_LINES.map((line, index) => (
+              <span key={line} data-text={line.toUpperCase()} style={{ '--i': index } as CSSProperties}>{line}</span>
+            ))}
+          </h1>
           <div className="arcade-hero-copy">
-            <div className="arcade-hud" aria-hidden="true">
-              <span>1UP <b>{clock.time}</b></span>
-              <span>{clock.date}</span>
-            </div>
-            <p className="arcade-eyebrow">Rural Health Unit · Queue Management</p>
-            <h1 className="arcade-title" data-text="EVERY PATIENT CALLED IN TURN">
-              Every patient called in turn
-            </h1>
             <p className="arcade-lede">
               Tickets from the kiosk, fair lanes at every window, and a live wall that tells patients exactly where to go.
             </p>
@@ -375,7 +378,9 @@ export function Login() {
             </div>
           </div>
 
-          <form className="arcade-cabinet" onSubmit={submit}>
+          <form className="arcade-cabinet arcade-billboard" onSubmit={submit}>
+            <span className="arcade-hanger" aria-hidden="true" />
+            <span className="arcade-billboard-tab" aria-hidden="true">Exit 1 · Staff only</span>
             <div className="arcade-cabinet-head">
               <img src={`${BASE}/img/logo.jpg`} alt="" />
               <div>

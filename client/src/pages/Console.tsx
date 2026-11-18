@@ -5,6 +5,7 @@ import { api } from '../api';
 import { useSession } from '../auth';
 import { apiQuery, consoleQueueQuery } from '../queryClient';
 import { Layout } from '../components/Layout';
+import { JourneyModal } from '../components/Journey';
 import { CategoryBadge, Icon, Modal, PasswordPrompt, StatusBadge, useToast } from '../components/ui';
 import { formatDateTime } from '../format';
 import { useDepartmentEvents, useServerOnline } from '../socket';
@@ -66,6 +67,7 @@ export function Console() {
   const online = useServerOnline();
   const locked = busy || !online;
   const [transferTargets, setTransferTargets] = useState<Target[] | null>(null);
+  const [journeyFor, setJourneyFor] = useState<number | null>(null);
   const [approveRow, setApproveRow] = useState<Row | null>(null);
   const [poolPick, setPoolPick] = useState<{ department_id: number; queue_id: number; queue_number: string } | null>(null);
   const [returnCode, setReturnCode] = useState('');
@@ -308,11 +310,12 @@ export function Console() {
                 )}
                 {shownRows.map((row) => (
                   <tr key={row.id} className={row.unattended ? 'is-unattended' : row.status === 'serving' ? 'is-serving' : ''}>
-                    <td><strong>{row.queue_number}</strong></td>
+                    <td><button type="button" className="ticket-link" title="See where this ticket has been" onClick={() => setJourneyFor(row.id)}>{row.queue_number}</button></td>
                     <td><CategoryBadge category={row.category} /></td>
                     <td>
                       {row.unattended ? <span className="badge status-unattended">Unattended</span> : <StatusBadge status={row.status} />}{' '}
                       {row.is_returning && <span className="badge badge-returning">Returning</span>}
+                      {row.transferred_to_name && <div className="muted" style={{ fontSize: '0.8rem' }}>Was sent to {row.transferred_to_name}</div>}
                       {row.unattended && (
                         <div className="muted" style={{ fontSize: '0.8rem' }}>
                           {row.unattended_by_name ? `${row.unattended_by_name} signed out` : 'Their staffer signed out'}
@@ -391,6 +394,7 @@ export function Console() {
         )}
       </div>
 
+      {journeyFor !== null && <JourneyModal queueId={journeyFor} onClose={() => setJourneyFor(null)} />}
       {transferTargets && (
         <Modal title="Transfer patient" onClose={() => setTransferTargets(null)} wide>
           <p className="muted" style={{ marginBottom: '0.75rem' }}>

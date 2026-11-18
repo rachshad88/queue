@@ -2,18 +2,18 @@ import bcrypt from 'bcryptjs';
 import { Router, type Request } from 'express';
 import type { Filter } from 'mongodb';
 import { config } from '../config';
-import { departments, isDuplicateKey, queue, queueLog, users, type DepartmentDoc, type QueueDoc } from '../db';
+import { departments, isDuplicateKey, queue, queueLog, users, type DepartmentDoc, type QueueDoc, type QueueLogDoc } from '../db';
 import { emit, queueUpdated, serveUpdate } from '../realtime';
 import { dentalDepartment, DENTAL_NUMBER, isDentalIssuedNumber, isPlainQueueNumber, resolveCurrentPatient, scopeDepartments } from '../services/currentPatient';
 import { operatorServeLock } from '../services/locks';
-import { attachIssuerNames, departmentNames, waitingCountsByDepartment } from '../services/lookups';
+import { attachIssuerNames, departmentNames, staffNames, waitingCountsByDepartment } from '../services/lookups';
 import { claimAndServe, isPooledDept, pooledWaitingRows, SERVE_ORDER, todaysQueue } from '../services/pool';
-import { logQueueAction, returningIds } from '../services/queueLog';
+import { isDepartureHalf, logQueueAction, MOVE_ARRIVAL_ACTIONS, returningIds, routeOf, ticketRoute } from '../services/queueLog';
 import { stampActivity } from '../services/singleLogin';
 import { isSectionedDept, markSectionActivity, markSectionOccupied, operatorSection, priorityWindowNames, sectionKindForDept, sectionRoster, windowCategoryFilter, windowServesPriority } from '../services/stations';
 import { finishFirst, finishFirstMessage, isUnattended, unattendedServing } from '../services/unattended';
-import { manilaDayStart } from '../time';
-import { clientIp, isInactive, num, sortDepartments, str, trimmed } from '../util';
+import { manilaDateStart, manilaDayStart, manilaDayString } from '../time';
+import { clientIp, contains, isInactive, num, paginate, sortDepartments, str, trimmed } from '../util';
 
 export const queueRouter = Router();
 
@@ -316,6 +316,148 @@ async function finishServingRows(filter: Filter<QueueDoc>): Promise<QueueDoc[]> 
   }
   return finished;
 }
+
+/**
+ * One ticket's whole trip: where it was issued and every department it passed
+ * through, with times and staff. Staff may open tickets that have been in their
+ * own department; the superadmin may open any ticket.
+ */
+queueRouter.get('/queue-journey', async (req, res) => {
+  const s = req.session;
+  const queueId = num(req.query.id);
+  const row = queueId ? await queue().findOne({ _id: queueId }) : null;
+  if (!row) {
+    res.json({ success: false, message: 'That ticket was not found.' });
+    return;
+  }
+  const logs = await queueLog().find({ queue_id: queueId }).sort({ created_at: 1, _id: 1 }).toArray();
+  if (!s.is_superadmin) {
+    const ownDept = s.department_id ?? 0;
+    const visited = row.department_id === ownDept || logs.some((l) => l.department_id === ownDept || l.old_department_id === ownDept);
+    if (!visited) {
+      res.json({ success: false, message: 'Access denied' });
+      return;
+    }
+  }
+
+  const steps = logs.filter((l) => !isDepartureHalf(l.action));
+  const route = ticketRoute(row.department_id, logs);
+  const issuedAt = route[0];
+  const deptIds = [...route, row.department_id, ...logs.flatMap((l) => [l.department_id, l.old_department_id ?? 0])];
+  const [deptNames, names] = await Promise.all([
+    departmentNames(deptIds),
+    staffNames([row.created_by, ...steps.map((l) => l.user_id), ...steps.map((l) => l.approved_by ?? null)]),
+  ]);
+  const path = route.map((id) => deptNames[id] ?? '');
+
+  res.json({
+    success: true,
+    queue_number: row.queue_number,
+    category: row.category ?? 'regular',
+    status: row.status,
+    department: deptNames[row.department_id] ?? '',
+    issued_in: deptNames[issuedAt] ?? '',
+    issued_at: row.created_at,
+    issued_by: row.created_by ? (names[row.created_by] ?? 'Deleted user') : null,
+    path,
+    steps: steps.map((l) => {
+      const route = routeOf(l);
+      return {
+        id: String(l._id),
+        at: l.created_at,
+        action: l.action,
+        queue_number: l.queue_number,
+        department: deptNames[l.department_id] ?? '',
+        from_department: route ? (deptNames[route.from] ?? '') : null,
+        to_department: route ? (deptNames[route.to] ?? '') : null,
+        old_status: l.old_status,
+        new_status: l.new_status,
+        operator: l.user_id ? (names[l.user_id] ?? 'Deleted user') : null,
+        approved_by: l.approved_by ? (names[l.approved_by] ?? 'Deleted user') : null,
+      };
+    }),
+  });
+});
+
+/**
+ * The Queue trail page: the tickets of a date range (default today) with the
+ * departments each passed through. Staff see tickets that have been in their
+ * own department; the superadmin may pick any department (or all).
+ */
+queueRouter.get('/queue-trail', async (req, res) => {
+  const PAGE_SIZE = 25;
+  const s = req.session;
+  const isSuperadmin = !!s.is_superadmin;
+  const today = manilaDayString();
+  // A day range (default today). Anyone may look back; staff stay limited to their own department.
+  const pick = (value: string): string => (manilaDateStart(value) && value <= today ? value : '');
+  const fromParam = pick(trimmed(req.query.from));
+  const toParam = pick(trimmed(req.query.to));
+  let from = fromParam || toParam || today;
+  let to = toParam || (fromParam ? today : from);
+  if (from > to) {
+    [from, to] = [to, from];
+  }
+  const deptId = isSuperadmin ? num(req.query.department) : (s.department_id ?? 0);
+  if (!isSuperadmin && !deptId) {
+    res.json({ success: false, message: 'Access denied' });
+    return;
+  }
+  const search = trimmed(req.query.q);
+  const movedOnly = str(req.query.moved) === '1';
+
+  const sameDay = { $gte: manilaDateStart(from)!, $lt: new Date(manilaDateStart(to)!.getTime() + 86400000) };
+  const dayLogs: Filter<QueueLogDoc> = { created_at: sameDay };
+  const conditions: Filter<QueueDoc>[] = [{ created_at: sameDay }];
+  if (deptId) {
+    const visited = await queueLog().distinct('queue_id', { ...dayLogs, $or: [{ department_id: deptId }, { old_department_id: deptId }] });
+    conditions.push({ $or: [{ department_id: deptId }, { _id: { $in: visited } }] });
+  }
+  if (search !== '') {
+    // A ticket can be renumbered when it moves, so match any number it has had.
+    const earlier = await queueLog().distinct('queue_id', { ...dayLogs, queue_number: contains(search) });
+    conditions.push({ $or: [{ queue_number: contains(search) }, { _id: { $in: earlier } }] });
+  }
+  if (movedOnly) {
+    conditions.push({ _id: { $in: await queueLog().distinct('queue_id', { ...dayLogs, action: { $in: MOVE_ARRIVAL_ACTIONS } }) } });
+  }
+  const filter: Filter<QueueDoc> = { $and: conditions };
+
+  const paging = paginate(await queue().countDocuments(filter), num(req.query.page) || 1, PAGE_SIZE);
+  const rows = await queue().find(filter).sort({ created_at: -1, _id: -1 }).skip(paging.offset).limit(PAGE_SIZE).toArray();
+  const logs = rows.length ? await queueLog().find({ queue_id: { $in: rows.map((r) => r._id) } }).sort({ created_at: 1, _id: 1 }).toArray() : [];
+  const logsByTicket = new Map<number, QueueLogDoc[]>();
+  for (const log of logs) {
+    logsByTicket.set(log.queue_id, [...(logsByTicket.get(log.queue_id) ?? []), log]);
+  }
+  const routes = new Map(rows.map((r) => [r._id, ticketRoute(r.department_id, logsByTicket.get(r._id) ?? [])]));
+  const deptNames = await departmentNames([...rows.map((r) => r.department_id), ...[...routes.values()].flat()]);
+
+  res.json({
+    success: true,
+    from,
+    to,
+    today,
+    can_pick: isSuperadmin,
+    departments: isSuperadmin ? sortDepartments(await departments().find().toArray()).map((d) => ({ id: d._id, name: d.name })) : [],
+    department: deptId ? (deptNames[deptId] ?? (await departmentName(deptId))) : '',
+    records: rows.map((r) => {
+      const history = logsByTicket.get(r._id) ?? [];
+      return {
+        id: r._id,
+        queue_number: r.queue_number,
+        category: r.category ?? 'regular',
+        status: r.status,
+        department: deptNames[r.department_id] ?? '',
+        issued_at: r.created_at,
+        last_at: history.length ? history[history.length - 1].created_at : r.created_at,
+        path: (routes.get(r._id) ?? []).map((id) => deptNames[id] ?? ''),
+        moves: history.filter((l) => MOVE_ARRIVAL_ACTIONS.includes(l.action)).length,
+      };
+    }),
+    paging,
+  });
+});
 
 queueRouter.post('/serve-next', async (req, res) => {
   const s = req.session;
