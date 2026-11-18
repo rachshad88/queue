@@ -1,13 +1,28 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type CSSProperties, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { BASE } from '../base';
 import { formatDateTime } from '../format';
+import { Walker } from './LoginJourney';
 
 type Department = { id: number; name: string };
 type Status = { status: 'pending' | 'approved' | 'rejected'; reason: string | null; username: string; requested_at: string; decided_at: string | null };
 
 const BLANK = { username: '', firstname: '', middlename: '', lastname: '', position: '', department: '' };
+const STAGES = ['Fill the form', 'Keep your code', 'Admin approves', 'Sign in'];
+const CONFETTI_COLORS = ['#ffd84a', '#ff4757', '#9dff8a', '#6cc0ff', '#ffffff'];
+type Vars = CSSProperties & Record<`--${string}`, string | number>;
+
+/** A burst of pixel confetti; remounted by key so it plays again. */
+function Confetti() {
+  return (
+    <div className="request-confetti" aria-hidden="true">
+      {Array.from({ length: 28 }, (_, n) => (
+        <i key={n} style={{ '--x': `${(n * 37) % 100}%`, '--d': `${(n % 7) * 90}ms`, '--r': `${(n % 5) * 60 - 120}deg`, background: CONFETTI_COLORS[n % CONFETTI_COLORS.length] } as Vars} />
+      ))}
+    </div>
+  );
+}
 
 /** Before sign-in: staff ask for an account, then check whether an admin approved it. */
 export function RequestAccount() {
@@ -17,6 +32,7 @@ export function RequestAccount() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [sent, setSent] = useState<{ username: string; code: string } | null>(null);
+  const [card, setCard] = useState(BLANK);
   const [check, setCheck] = useState({ username: '', code: '' });
   const [checkError, setCheckError] = useState('');
   const [status, setStatus] = useState<Status | null>(null);
@@ -40,6 +56,7 @@ export function RequestAccount() {
       setError(result.message ?? 'The request could not be sent.');
       return;
     }
+    setCard(form);
     setSent({ username: result.username, code: result.code });
     setCheck({ username: result.username, code: result.code });
     setForm(BLANK);
@@ -64,6 +81,15 @@ export function RequestAccount() {
     </label>
   );
 
+  const shown = sent ? card : form;
+  const fullName = [shown.firstname, shown.middlename, shown.lastname].map((x) => x.trim()).filter(Boolean).join(' ');
+  const initials = [shown.firstname, shown.lastname].map((x) => x.trim().charAt(0).toUpperCase()).join('') || '?';
+  const departmentName = departments.find((d) => String(d.id) === shown.department)?.name ?? '';
+  const stage = status?.status === 'approved' ? 3 : status ? 2 : sent ? 1 : 0;
+  const cardState = status?.status ?? (sent ? 'pending' : 'draft');
+  const cardLabel = { draft: 'Not sent yet', pending: 'Waiting for admin', approved: 'Approved!', rejected: 'Not approved' }[cardState];
+  const celebrate = status?.status === 'approved' ? 'approved' : sent ? `sent-${sent.code}` : '';
+
   return (
     <div className="arcade request-page">
       <div className="arcade-crt" aria-hidden="true" />
@@ -83,13 +109,26 @@ export function RequestAccount() {
           <svg className="arcade-cloud" viewBox="0 0 24 10" shapeRendering="crispEdges" style={{ top: '18%', animationDelay: '-44s', animationDuration: '95s' }}><rect x="7" y="0" width="7" height="2" /><rect x="4" y="2" width="14" height="2" /><rect x="15" y="1" width="4" height="2" /><rect x="1" y="4" width="22" height="3" /><rect x="0" y="7" width="24" height="2" className="shade" /></svg>
           <svg className="arcade-cloud" viewBox="0 0 24 10" shapeRendering="crispEdges" style={{ top: '30%', animationDelay: '-70s', animationDuration: '85s' }}><rect x="7" y="0" width="7" height="2" /><rect x="4" y="2" width="14" height="2" /><rect x="15" y="1" width="4" height="2" /><rect x="1" y="4" width="22" height="3" /><rect x="0" y="7" width="24" height="2" className="shade" /></svg>
           <div className="arcade-sun" />
+          <div className="request-hills request-hills-far" />
+          <div className="request-hills" />
         </div>
+        {celebrate && <Confetti key={celebrate} />}
 
         <div className="request-intro">
           <p className="request-kicker">New player</p>
           <h1 className="request-title">Join the team</h1>
           <p className="request-lede">Ask for a staff account. An admin checks it, then you sign in with <b>{defaultPassword}</b> and pick your own password.</p>
         </div>
+
+        <ol className="request-track" aria-label="Your progress">
+          {STAGES.map((label, index) => (
+            <li key={label} className={index < stage ? 'done' : index === stage ? 'here' : ''}>
+              {index === stage && <span className="request-track-runner"><Walker /></span>}
+              <b>{index < stage ? '✔' : index + 1}</b>
+              <span>{label}</span>
+            </li>
+          ))}
+        </ol>
 
         <div className="request-signs">
           <section className="request-sign">
@@ -108,7 +147,7 @@ export function RequestAccount() {
                 <p className="request-code">{sent.code}</p>
                 <p className="request-note">Write it down. With <b>{sent.username}</b> and this code you can check your request.</p>
                 <p className="request-note">Once approved, sign in as <b>{sent.username}</b> with <b>{defaultPassword}</b>, then change your password.</p>
-                <button type="button" className="arcade-btn arcade-btn-ghost" onClick={() => setSent(null)}>Send another request</button>
+                <button type="button" className="arcade-btn arcade-btn-ghost" onClick={() => { setSent(null); setCard(BLANK); }}>Send another request</button>
               </div>
             ) : (
               <form onSubmit={(e) => void submit(e)}>
@@ -134,6 +173,21 @@ export function RequestAccount() {
               </form>
             )}
           </section>
+
+          <div className="request-side">
+          <div className={`request-player is-${cardState}`} aria-label="Preview of your account">
+            <span className="request-player-tag">Player 2</span>
+            <div className="request-avatar">{initials}</div>
+            <div className="request-player-info">
+              <b>{fullName || 'Your name'}</b>
+              <span>@{shown.username.trim() || 'username'}</span>
+              <span className="request-player-chips">
+                <i>{departmentName || 'Department'}</i>
+                {shown.position.trim() && <i>{shown.position.trim()}</i>}
+              </span>
+            </div>
+            <span className="request-player-state">{cardLabel}</span>
+          </div>
 
           <section className="request-sign request-sign-blue">
             <span className="request-sign-tab" aria-hidden="true">Status check</span>
@@ -164,6 +218,7 @@ export function RequestAccount() {
               </div>
             )}
           </section>
+          </div>
         </div>
         <div className="request-ground" aria-hidden="true" />
       </section>

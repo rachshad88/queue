@@ -2185,7 +2185,7 @@ body { background-color: #f2f8ff; }
 }
 .request-lede { max-width: 34rem; margin: 0.9rem 0 0; font-weight: 600; color: #fff; text-shadow: 1.5px 0 0 var(--ol), -1.5px 0 0 var(--ol), 0 1.5px 0 var(--ol), 0 -1.5px 0 var(--ol), 2px 2px 0 var(--ol); }
 .request-lede b { color: var(--a-yellow); }
-.request-signs { width: min(1100px, 100%); margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 2rem; align-items: start; }
+.request-signs { position: relative; width: min(1100px, 100%); margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 2rem; align-items: start; }
 .request-sign {
   position: relative; padding: 2.2rem 1.6rem 1.6rem; background: var(--a-sign); border-radius: 12px; color: #fff;
   box-shadow: inset 0 0 0 4px #fff, 0 0 0 4px var(--a-sign-edge), 0 14px 0 4px rgba(18, 5, 30, 0.3);
@@ -2336,4 +2336,65 @@ body { background-color: #f2f8ff; }
 @media (prefers-reduced-motion: reduce) {
   .join.play *, .join.play .join-stage, .join-stars { animation: none !important; }
   .js-stamp { opacity: 1; }
+}
+
+/* Request page extras: hills, progress road, live player card and confetti. */
+.request-hills {
+  position: absolute; left: 0; right: 0; bottom: clamp(5rem, 16vh, 9rem); height: 120px; background: #3d8f3a;
+  clip-path: polygon(0 100%, 0 60%, 6% 60%, 6% 45%, 12% 45%, 12% 30%, 20% 30%, 20% 45%, 27% 45%, 27% 60%, 34% 60%, 34% 40%, 40% 40%, 40% 25%, 48% 25%, 48% 40%, 55% 40%, 55% 62%, 63% 62%, 63% 42%, 70% 42%, 70% 20%, 78% 20%, 78% 38%, 85% 38%, 85% 55%, 92% 55%, 92% 40%, 100% 40%, 100% 100%);
+}
+.request-hills-far { height: 190px; background: #7fb6e8; opacity: 0.8; clip-path: polygon(0 100%, 0 50%, 8% 50%, 8% 30%, 16% 30%, 16% 10%, 24% 10%, 24% 30%, 33% 30%, 33% 55%, 42% 55%, 42% 25%, 52% 25%, 52% 5%, 60% 5%, 60% 28%, 68% 28%, 68% 50%, 78% 50%, 78% 22%, 88% 22%, 88% 40%, 100% 40%, 100% 100%); }
+
+.request-track { position: relative; width: min(1100px, 100%); margin: 0 auto 2.6rem; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.request-track::before { content: ''; position: absolute; left: 12.5%; right: 12.5%; top: 20px; height: 10px; background: #2e2e36 repeating-linear-gradient(90deg, var(--a-yellow) 0 14px, transparent 14px 26px) 0 50% / 100% 2px no-repeat; box-shadow: 0 0 0 3px #12051e; }
+.request-track li { position: relative; display: grid; justify-items: center; gap: 0.6rem; text-align: center; }
+.request-track b {
+  position: relative; display: grid; place-items: center; width: 44px; height: 44px; font-family: var(--a-pixel); font-weight: 400; font-size: 0.8rem;
+  color: #12051e; background: #fff; box-shadow: 0 0 0 3px #12051e, 0 5px 0 3px rgba(18, 5, 30, 0.35);
+}
+.request-track span { font-family: var(--a-pixel); font-size: 0.5rem; line-height: 1.5; text-transform: uppercase; color: #fff; text-shadow: 1.5px 0 0 #12051e, -1.5px 0 0 #12051e, 0 1.5px 0 #12051e, 0 -1.5px 0 #12051e; }
+.request-track li.done b { background: #9dff8a; }
+.request-track li.here b { background: var(--a-yellow); animation: post-bob 600ms steps(2) infinite; box-shadow: 0 0 0 3px #12051e, 0 0 18px var(--a-yellow); }
+.request-track li.here span { color: var(--a-yellow); }
+.request-track-runner { position: absolute; bottom: calc(100% - 6px); left: calc(50% - 46px); width: 26px; }
+.request-track-runner .walker { width: 100%; }
+.request-page .request-track-runner .walker-a { animation: walk-a 260ms steps(1) infinite; }
+.request-page .request-track-runner .walker-b { animation: walk-b 260ms steps(1) infinite; }
+
+.request-side { display: grid; gap: 2.4rem; }
+.request-player {
+  position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.9rem 1rem; align-items: center; padding: 1.4rem 1.2rem 1.1rem;
+  color: #fff; background: #1b1340; border-radius: 10px; box-shadow: inset 0 0 0 3px #4b3c99, 0 0 0 3px #12051e, 0 10px 0 3px rgba(18, 5, 30, 0.3);
+  animation: cabinet-in 700ms steps(7) 250ms backwards;
+}
+.request-player-tag { position: absolute; top: 0; left: 1rem; translate: 0 -55%; padding: 0.4rem 0.6rem; font-family: var(--a-pixel); font-size: 0.5rem; text-transform: uppercase; color: #12051e; background: var(--a-yellow); box-shadow: inset 0 0 0 3px #12051e; }
+.request-avatar {
+  display: grid; place-items: center; width: 72px; height: 72px; font-family: var(--a-pixel); font-size: 1.2rem; color: #12051e;
+  background: repeating-linear-gradient(45deg, #ffd84a 0 6px, #ffe57a 6px 12px); box-shadow: 0 0 0 3px #12051e, inset 0 0 0 3px #fff;
+}
+.request-player-info { display: grid; gap: 0.35rem; min-width: 0; }
+.request-player-info b { font-family: var(--a-pixel); font-weight: 400; font-size: 0.7rem; line-height: 1.45; color: var(--a-yellow); overflow-wrap: anywhere; }
+.request-player-info > span { font-size: 0.9rem; color: #d9dee8; overflow-wrap: anywhere; }
+.request-player-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.request-player-chips i { font-style: normal; font-family: var(--a-pixel); font-size: 0.45rem; text-transform: uppercase; padding: 0.35rem 0.45rem; color: #9dff8a; background: #0b0f0a; box-shadow: 0 0 0 2px #2c3a28; }
+.request-player-state { grid-column: 1 / -1; justify-self: stretch; text-align: center; padding: 0.5rem; font-family: var(--a-pixel); font-size: 0.55rem; text-transform: uppercase; color: #d9dee8; background: #0b0f0a; box-shadow: 0 0 0 2px #4b3c99; }
+.request-player.is-draft .request-player-state { animation: blink 1.4s steps(1) infinite; }
+.request-player.is-pending .request-player-state { color: #12051e; background: var(--a-yellow); }
+.request-player.is-approved .request-player-state { color: #12051e; background: #9dff8a; }
+.request-player.is-approved { box-shadow: inset 0 0 0 3px #9dff8a, 0 0 0 3px #12051e, 0 0 26px rgba(157, 255, 138, 0.6); }
+.request-player.is-rejected .request-player-state { color: #fff; background: #ff4757; }
+
+.request-confetti { position: absolute; inset: 0; z-index: 5; pointer-events: none; overflow: hidden; }
+.request-confetti i { position: absolute; top: -12px; left: var(--x); width: 10px; height: 10px; box-shadow: 0 0 0 2px #12051e; animation: confetti-fall 1.8s steps(18) var(--d) forwards; }
+@keyframes confetti-fall { to { transform: translateY(80vh) rotate(var(--r)); opacity: 0; } }
+
+@media (max-width: 860px) {
+  .request-track span { font-size: 0.42rem; }
+  .request-track b { width: 36px; height: 36px; }
+  .request-track::before { top: 16px; }
+  .request-track-runner { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .request-page *, .request-confetti { animation: none !important; }
+  .request-confetti { display: none; }
 }
