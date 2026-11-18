@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
-import { api } from '../api';
 import { BASE } from '../base';
-import { useDepartmentEvents } from '../socket';
 import { play, setSoundEnabled, useSoundEnabled, type SoundName } from '../sfx';
 
 /*
@@ -21,7 +19,6 @@ export const STEPS = [
 
 const PRIORITY_WINDOWS = ['Waiting Area 1', 'Waiting Area 2', 'Admission 3', 'Admission 4'];
 
-type LiveConfig = { departments?: { id: number; name: string }[]; admission_sections?: string[]; waiting_sections?: string[] };
 
 const pad = (value: number): string => String(value).padStart(2, '0');
 const clamp01 = (value: number): number => Math.min(1, Math.max(0, value));
@@ -509,160 +506,109 @@ function PlayerSelect() {
   );
 }
 
-// ---- 3. Service board: every service with what it does and its live queue ----------
+// ---- 3. New staff: how the sign-up page works -----------------------------------------
 
-const ICONS: Record<string, { art: string[]; palette: Record<string, string> }> = {
-  clinic: {
-    art: ['...KKKK...', '...KRRK...', '...KRRK...', 'KKKKRRKKKK', 'KRRRRRRRRK', 'KRRRRRRRRK', 'KKKKRRKKKK', '...KRRK...', '...KRRK...', '...KKKK...'],
-    palette: { K: INK, R: '#e63946' },
-  },
-  admission: {
-    art: ['...KKKK...', '.KKKYYKKK.', '.KWKKKKWK.', '.KWWWWWWK.', '.KWKKKKWK.', '.KWWWWWWK.', '.KWKKKKWK.', '.KWWWWWWK.', '.KWKKKWWK.', '.KKKKKKKK.'],
-    palette: { K: INK, Y: '#ffd84a', W: '#f4f1fb' },
-  },
-  lab: {
-    art: ['..KKKKKK..', '...KGGK...', '...KGGK...', '...KGGK...', '..KGGGGK..', '.KGGGGGGK.', '.KCCCCCCK.', 'KCCWCCCCCK', 'KCCCCCCCCK', '.KKKKKKKK.'],
-    palette: { K: INK, G: '#d9f3ff', C: '#3fd0c9', W: '#ffffff' },
-  },
-  pharmacy: {
-    art: ['..........', '..........', '.KKKKKKKK.', 'KRRRRWWWWK', 'KRWRRWWWWK', 'KRRRRWWWWK', 'KRRRRWWWWK', '.KKKKKKKK.', '..........', '..........'],
-    palette: { K: INK, R: '#e63946', W: '#f4f1fb' },
-  },
-  dental: {
-    art: ['.KKK..KKK.', 'KWWWKKWWWK', 'KWWWWWWWWK', 'KWWWWWWWWK', 'KWWWWWWWWK', '.KWWWWWWK.', '.KWWKKWWK.', '.KWK..KWK.', '.KWK..KWK.', '..K....K..'],
-    palette: { K: INK, W: '#f4f1fb' },
-  },
-  abtc: {
-    art: ['..........', '..........', 'K..KKKKK..', 'KKKKCCWK..', 'K..KCCWKKK', 'KKKKCCWK..', 'K..KKKKK..', '..........', '..........', '..........'],
-    palette: { K: INK, C: '#6cc0ff', W: '#f4f1fb' },
-  },
-  nutrition: {
-    art: ['....B.L...', '....BLL...', '.KKKBKKK..', 'KRRRRRRRK.', 'KRWRRRRRK.', 'KRRRRRRRK.', 'KRRRRRRRK.', '.KRRRRRK..', '..KKRKK...', '..........'],
-    palette: { K: INK, R: '#e63946', W: '#ffb3ba', B: '#7a4a1f', L: '#3fbf5f' },
-  },
-  tb: {
-    art: ['....KK....', '....KK....', '.KKKKKKKK.', 'KPPKKKKPPK', 'KPPPKKPPPK', 'KPWPKKPPPK', 'KPPPKKPPPK', 'KPPPKKPPPK', '.KPK..KPK.', '..K....K..'],
-    palette: { K: INK, P: '#ff8fa3', W: '#ffd6dd' },
-  },
-  vet: {
-    art: ['...KK..KK...', '..KBBKKBBK..', '..KBBKKBBK..', 'KK.KKKKKK.KK', 'KBK......KBK', 'KBK.KKKK.KBK', '.K.KBBBBK.K.', '..KBBBBBBK..', '..KBBBBBBK..', '...KKKKKK...'],
-    palette: { K: INK, B: '#c98a4b' },
-  },
-};
-
-const SERVICE_INFO: { match: RegExp; icon: keyof typeof ICONS; text: string }[] = [
-  { match: /clinic/i, icon: 'clinic', text: 'Check-up and consultation with a doctor.' },
-  { match: /admission/i, icon: 'admission', text: 'Patient records and admission.' },
-  { match: /lab/i, icon: 'lab', text: 'Blood, urine and other tests.' },
-  { match: /pharm/i, icon: 'pharmacy', text: 'Pick up the medicines you were prescribed.' },
-  { match: /dental/i, icon: 'dental', text: 'Tooth check-ups, cleaning and extraction.' },
-  { match: /abtc|bite/i, icon: 'abtc', text: 'Animal bite treatment and anti-rabies shots.' },
-  { match: /nutri/i, icon: 'nutrition', text: 'Nutrition advice and growth checks.' },
-  { match: /tb/i, icon: 'tb', text: 'TB screening and daily treatment.' },
-  { match: /vet/i, icon: 'vet', text: 'Care and vaccines for pets and animals.' },
+const JOIN_STEPS: { title: string; text: string }[] = [
+  { title: 'Fill the form', text: 'Open Request account and enter your username, department, name and position.' },
+  { title: 'Keep your code', text: 'You get a 6-letter request code. With your username it lets you check your request.' },
+  { title: 'Admin approves', text: 'An admin confirms your department and role, or tells you why it was not approved.' },
+  { title: 'Sign in', text: 'Sign in with the password 12345, then choose your own password.' },
 ];
-const serviceInfo = (name: string): { icon: keyof typeof ICONS; text: string } =>
-  SERVICE_INFO.find((s) => s.match.test(name)) ?? { icon: 'clinic', text: 'Staff call your number here.' };
+const SAMPLE_CODE = 'K7Q2MX';
 
-type BoardDept = { id: number; serving?: { queue_number?: string }[]; waiting_total?: number };
-
-/** Today's numbers per service, fetched once in view and again whenever a queue changes (socket push, no polling). */
-function useServiceBoard(ids: number[], active: boolean): Record<number, { now: string | null; waiting: number }> | null {
-  const [board, setBoard] = useState<Record<number, { now: string | null; waiting: number }> | null>(null);
-  const key = ids.join(',');
-  const refresh = useRef<() => void>(() => {});
-  refresh.current = () => {
-    if (!key) {
-      return;
-    }
-    void api<BoardDept[]>(`/live-serving?ids=${key}`)
-      .then((rows) => {
-        if (!Array.isArray(rows)) {
-          return;
-        }
-        const next: Record<number, { now: string | null; waiting: number }> = {};
-        for (const row of rows) {
-          const now = (row.serving ?? []).map((s) => s.queue_number).find((n) => n && n !== '-') ?? null;
-          next[row.id] = { now, waiting: row.waiting_total ?? 0 };
-        }
-        setBoard(next);
-      })
-      .catch(() => undefined);
-  };
-  useEffect(() => {
-    if (active) {
-      refresh.current();
-    }
-  }, [active, key]);
-  useDepartmentEvents(active ? ids : [], 'live', {
-    connect: () => refresh.current(),
-    'queue-updated': () => refresh.current(),
-  });
-  return board;
+/** Step 1: the request form filling itself in. */
+function FormScreen() {
+  return (
+    <div className="js-form">
+      {[['User', 'maria.santos'], ['Dept', 'LABORATORY ▾'], ['Name', 'Maria Santos']].map(([label, value], line) => (
+        <div key={label} className="js-line" style={{ '--l': line } as Vars}>
+          <span>{label}</span>
+          <b><i>{value}</i></b>
+        </div>
+      ))}
+      <span className="js-send">▶ Send</span>
+    </div>
+  );
 }
 
-function ServiceBoard({ services }: { services: LiveConfig | null }) {
+/** Step 2: the request code appearing letter by letter. */
+function CodeScreen() {
+  return (
+    <div className="js-code">
+      <span className="js-caption">Your code</span>
+      <p className="js-plate">{SAMPLE_CODE.split('').map((ch, n) => <b key={n} style={{ '--n': n } as Vars}>{ch}</b>)}</p>
+      <span className="js-caption js-pencil">✎ Write it down</span>
+    </div>
+  );
+}
+
+/** Step 3: an admin stamps the request. */
+function ApproveScreen() {
+  return (
+    <div className="js-approve">
+      <div className="js-request">
+        <span>Account request</span>
+        <b>maria.santos</b>
+        <small>LABORATORY · staff</small>
+      </div>
+      <span className="js-stamp">Approved</span>
+    </div>
+  );
+}
+
+/** Step 4: signing in with the starting password. */
+function SignInScreen() {
+  return (
+    <div className="js-signin">
+      <div className="js-line"><span>User</span><b>maria.santos</b></div>
+      <div className="js-line"><span>Pass</span><b className="js-dots">{[0, 1, 2, 3, 4].map((n) => <i key={n} style={{ '--n': n } as Vars}>●</i>)}</b></div>
+      <span className="js-start">▶ Press start</span>
+      <span className="js-welcome">Welcome!</span>
+    </div>
+  );
+}
+
+const JOIN_SCREENS = [FormScreen, CodeScreen, ApproveScreen, SignInScreen];
+
+function JoinSteps() {
   const sectionRef = useRef<HTMLElement>(null);
-  const inView = useInView(sectionRef, 0.05);
+  const inView = useInView(sectionRef, 0.15);
   const [seen, setSeen] = useState(false);
   useEffect(() => {
     if (inView) {
       setSeen(true);
     }
   }, [inView]);
-  const list = useMemo(() => (services?.departments ?? []).filter((d) => d.name !== 'WAITING AREA'), [services]);
-  const ids = useMemo(() => list.map((d) => d.id).slice(0, 12), [list]);
-  const board = useServiceBoard(ids, seen);
-  const totals = board ? Object.values(board).reduce((sum, d) => ({ waiting: sum.waiting + d.waiting, serving: sum.serving + (d.now ? 1 : 0) }), { waiting: 0, serving: 0 }) : null;
 
   return (
-    <section className="svc" id="services" ref={sectionRef}>
+    <section className={`svc join${seen ? ' play' : ''}`} id="join" ref={sectionRef}>
+      <div className="join-stars" aria-hidden="true" />
       <div className="arcade-wrap">
-        <p className="arcade-kicker" data-reveal>Service board</p>
-        <h2 className="arcade-heading" data-reveal>Where your ticket can take you</h2>
-        <p className="arcade-sub" data-reveal>Staff pass your ticket from one service to the next, so you never line up twice. The numbers below are live.</p>
-        {list.length > 0 ? (
-          <>
-            <p className="svc-status" aria-live="polite">
-              <span className="svc-dot" aria-hidden="true" /> Live today
-              {totals && (
-                <>
-                  <span><b>{totals.serving}</b> serving</span>
-                  <span><b>{totals.waiting}</b> waiting</span>
-                </>
-              )}
-            </p>
-            <ul className={`svc-grid${seen ? ' play' : ''}`}>
-              {list.map((dept, index) => {
-                const info = serviceInfo(dept.name);
-                const icon = ICONS[info.icon];
-                const live = board?.[dept.id];
-                const busy = !!live && (!!live.now || live.waiting > 0);
-                return (
-                  <li key={dept.id} className={`svc-card${busy ? ' busy' : ''}`} style={{ '--i': index } as Vars}>
-                    <span className="svc-icon">
-                      <PixelArt art={icon.art} palette={icon.palette} />
-                    </span>
-                    <span className="svc-body">
-                      <b className="svc-name">{dept.name}</b>
-                      <span className="svc-text">{info.text}</span>
-                    </span>
-                    <span className="svc-live">
-                      <span>
-                        Now <b className={live?.now ? 'on' : undefined}>{live?.now ?? '---'}</b>
-                      </span>
-                      <span>
-                        Wait <b className={live?.waiting ? 'on' : undefined}>{live ? pad(live.waiting) : '--'}</b>
-                      </span>
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </>
-        ) : (
-          <p className="arcade-sub">The list of services could not be loaded right now.</p>
-        )}
+        <p className="arcade-kicker" data-reveal>New staff · World 2</p>
+        <h2 className="arcade-heading" data-reveal>How to get a staff account</h2>
+        <p className="arcade-sub" data-reveal>No account yet? Ask for one yourself. Clear four stages and you are on the team.</p>
+        <ol className="join-map">
+          {JOIN_STEPS.map((step, index) => {
+            const Screen = JOIN_SCREENS[index];
+            return (
+              <li key={step.title} className="join-stage" style={{ '--i': index } as Vars}>
+                <span className="join-flag">Stage {index + 1}</span>
+                <div className="join-screen" aria-hidden="true"><Screen /></div>
+                <b className="join-title">{step.title}</b>
+                <span className="join-text">{step.text}</span>
+              </li>
+            );
+          })}
+        </ol>
+        <div className="join-road" aria-hidden="true">
+          {[0, 1, 2, 3].map((n) => <span key={n} className="join-stop" style={{ '--i': n } as Vars} />)}
+          <span className="join-runner"><Walker /></span>
+          <span className="join-goal">Goal</span>
+        </div>
+        <div className="join-actions" data-reveal>
+          <a className="arcade-btn arcade-btn-big join-cta" href={`${BASE}/request-account`}>✚ Request account</a>
+          <a className="arcade-btn arcade-btn-ghost arcade-btn-big" href={`${BASE}/request-account`}>Check my request</a>
+        </div>
       </div>
     </section>
   );
@@ -732,12 +678,12 @@ export function SoundToggle() {
 }
 
 /** Everything below the hero and ticker. */
-export function LandingJourney({ services, onSignIn }: { services: LiveConfig | null; onSignIn: () => void }) {
+export function LandingJourney({ onSignIn }: { onSignIn: () => void }) {
   return (
     <>
       <VisitRun />
       <PlayerSelect />
-      <ServiceBoard services={services} />
+      <JoinSteps />
       <ContinueScreen onSignIn={onSignIn} />
     </>
   );
