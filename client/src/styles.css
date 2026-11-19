@@ -208,6 +208,25 @@ input:focus, select:focus { outline: none; border-color: var(--brand); backgroun
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 .nav-item.active svg { opacity: 1; }
+.nav-badge {
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.35rem;
+  margin-left: auto;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  background: #ffd84a;
+  color: #5a0d10;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.15);
+  animation: nav-badge-pop 360ms var(--ease-bounce) both;
+}
+.nav-drop > .nav-item .nav-badge { margin-left: 0.1rem; }
+@keyframes nav-badge-pop { from { transform: scale(0.4); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .nav-badge { animation: none; } }
 .main { flex: 1; min-width: 0; padding: 1.6rem 1.9rem 3rem; }
 .page-head { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.2rem; flex-wrap: wrap; }
 .page-actions { margin-left: auto; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
