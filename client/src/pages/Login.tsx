@@ -168,6 +168,53 @@ function PixelMoto({ className, color }: { className: string; color: string }) {
   );
 }
 
+/** A pixel airliner, side view, nose to the right. */
+function PixelPlane({ className, color }: { className: string; color: string }) {
+  return (
+    <svg className={className} viewBox="0 0 32 12" shapeRendering="crispEdges">
+      <rect x="3" y="1" width="2" height="1" fill={color} />
+      <rect x="2" y="2" width="3" height="4" fill={color} />
+      <rect x="4" y="5" width="24" height="4" fill="#f4f1fb" />
+      <rect x="28" y="6" width="2" height="3" fill="#f4f1fb" />
+      <rect x="30" y="7" width="1" height="2" fill="#d9d4e8" />
+      <rect x="4" y="8" width="26" height="1" fill="#b9b3cc" />
+      <rect x="4" y="7" width="24" height="1" fill={color} />
+      {[10, 13, 16, 19, 22].map((x) => <rect key={x} x={x} y="6" width="1" height="1" fill="#29f0ff" />)}
+      <rect x="27" y="6" width="2" height="1" fill="#1b1030" />
+      <rect x="1" y="7" width="5" height="1" fill="#b9b3cc" />
+      <rect x="13" y="8" width="8" height="2" fill="#b9b3cc" />
+      <rect x="15" y="10" width="5" height="1" fill="#8d86a6" />
+      <rect x="16" y="9" width="3" height="2" fill="#4b4566" />
+      <rect className="arcade-beacon" x="3" y="0" width="1" height="1" fill="#ff2747" />
+    </svg>
+  );
+}
+
+/** A pixel medevac helicopter, side view, nose to the left, rotors spinning. */
+function PixelHeli({ className, color }: { className: string; color: string }) {
+  return (
+    <svg className={className} viewBox="0 0 30 14" shapeRendering="crispEdges">
+      <rect className="arcade-rotor" x="2" y="0" width="24" height="1" fill="#1b1030" />
+      <rect x="13" y="1" width="2" height="2" fill="#4b4566" />
+      <rect x="5" y="3" width="15" height="7" fill="#f4f1fb" />
+      <rect x="3" y="5" width="2" height="4" fill="#f4f1fb" />
+      <rect x="4" y="5" width="4" height="2" fill="#29f0ff" />
+      <rect x="13" y="4" width="1" height="5" fill="#ff2747" />
+      <rect x="11" y="6" width="5" height="1" fill="#ff2747" />
+      <rect x="3" y="9" width="17" height="1" fill={color} />
+      <rect x="20" y="5" width="7" height="2" fill="#f4f1fb" />
+      <rect x="20" y="6" width="7" height="1" fill={color} />
+      <rect x="26" y="3" width="2" height="4" fill={color} />
+      <rect className="arcade-tail-rotor" x="28" y="1" width="1" height="6" fill="#1b1030" />
+      <rect className="arcade-beacon" x="19" y="2" width="1" height="1" fill="#ff2747" />
+      <rect x="8" y="10" width="1" height="2" fill="#4b4566" />
+      <rect x="16" y="10" width="1" height="2" fill="#4b4566" />
+      <rect x="4" y="11" width="1" height="1" fill="#1b1030" />
+      <rect x="5" y="12" width="14" height="1" fill="#1b1030" />
+    </svg>
+  );
+}
+
 /** A small pixel town on the horizon, in front of the mountains. */
 function PixelTown({ className }: { className: string }) {
   const blocks: [number, number, number][] = [
@@ -324,6 +371,10 @@ export function Login() {
           <svg className="arcade-cloud" viewBox="0 0 24 10" shapeRendering="crispEdges" style={{ top: '8%', animationDelay: '-10s', animationDuration: '70s' }}><rect x="7" y="0" width="7" height="2" /><rect x="4" y="2" width="14" height="2" /><rect x="15" y="1" width="4" height="2" /><rect x="1" y="4" width="22" height="3" /><rect x="0" y="7" width="24" height="2" className="shade" /></svg>
           <svg className="arcade-cloud" viewBox="0 0 24 10" shapeRendering="crispEdges" style={{ top: '22%', animationDelay: '-38s', animationDuration: '95s' }}><rect x="7" y="0" width="7" height="2" /><rect x="4" y="2" width="14" height="2" /><rect x="15" y="1" width="4" height="2" /><rect x="1" y="4" width="22" height="3" /><rect x="0" y="7" width="24" height="2" className="shade" /></svg>
           <svg className="arcade-cloud" viewBox="0 0 24 10" shapeRendering="crispEdges" style={{ top: '14%', animationDelay: '-62s', animationDuration: '85s' }}><rect x="7" y="0" width="7" height="2" /><rect x="4" y="2" width="14" height="2" /><rect x="15" y="1" width="4" height="2" /><rect x="1" y="4" width="22" height="3" /><rect x="0" y="7" width="24" height="2" className="shade" /></svg>
+          <div className="arcade-flyer plane-a" style={{ top: '5%' }}><PixelPlane className="arcade-plane" color="#2f6fe0" /></div>
+          <div className="arcade-flyer plane-b" style={{ top: '19%' }}><PixelPlane className="arcade-plane far" color="#ff3df2" /></div>
+          <div className="arcade-flyer heli-a" style={{ top: '28%' }}><PixelHeli className="arcade-heli" color="#ff2747" /></div>
+          <div className="arcade-flyer heli-b" style={{ top: '11%' }}><PixelHeli className="arcade-heli far" color="#ffb020" /></div>
           <div className="arcade-sun" />
           <div className="arcade-mountains">
             <svg viewBox="0 0 200 40" preserveAspectRatio="none" shapeRendering="crispEdges">
